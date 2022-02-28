@@ -10,6 +10,14 @@
 > Unlike the previous assignment where we had a receiver thread associated with each socket, we will be managing a collection of connections using a fixed thread pool. A typical set up for this assignment involves a server with a thread pool size of 10 and 100 active clients that send data over their connections. Please note that you must use Java NIO for this assignment.
 
 
+## Class Descriptions
+
+### Server
+
+
+
+### Clients
+
 
 
 
