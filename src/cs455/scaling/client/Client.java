@@ -19,11 +19,12 @@ public class Client {
 
 		if (args.length == 3){
 			// First argument is server-host
-			String serverHost = args[1];
+			String serverHost = args[0];
 			// Second argument is server-port
-			int serverPort = Integer.parseInt(args[2]);
+			int serverPort = Integer.parseInt(args[1]);
 			// Third argument is message-rate
-			int messageRate = Integer.parseInt(args[3]);
+			int messageRate = Integer.parseInt(args[2]);
+			System.out.println("serverHost: " + serverHost + ", serverPort: " + serverPort + ", messageRate: once every " + messageRate + " seconds.");
 		}
 		try {
 			client = SocketChannel.open(new InetSocketAddress("localhost", 5001));

@@ -18,13 +18,14 @@ public class Server {
 
 	public static void main(String[] args) throws IOException {
 	
-		if (args.length == 2){
+		if (args.length == 3){
 			// First argument is thread-pool-size
 			int threadPoolSize = Integer.parseInt(args[0]);
 			// Second argument is batch-size
 			int batchSize = Integer.parseInt(args[1]);
 			// Third argument is batch-time		
 			int batchTime = Integer.parseInt(args[2]);
+			System.out.println("threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchSize + " seconds.");
 		}
 
 		Selector selector = Selector.open();
