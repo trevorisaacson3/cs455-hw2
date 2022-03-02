@@ -16,7 +16,15 @@ public class Client {
 	private static ByteBuffer buffer;
 
 	public static void main(String[] args) throws IOException {
-	
+
+		if (args.length == 3){
+			// First argument is server-host
+			String serverHost = args[1];
+			// Second argument is server-port
+			int serverPort = Integer.parseInt(args[2]);
+			// Third argument is message-rate
+			int messageRate = Integer.parseInt(args[3]);
+		}
 		try {
 			client = SocketChannel.open(new InetSocketAddress("localhost", 5001));
 			buffer = ByteBuffer.allocate(256);

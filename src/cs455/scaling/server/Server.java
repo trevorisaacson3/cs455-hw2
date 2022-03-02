@@ -17,9 +17,17 @@ public class Server {
 	private static ByteBuffer buffer;
 
 	public static void main(String[] args) throws IOException {
-		
-		Selector selector = Selector.open();
+	
+		if (args.length == 2){
+			// First argument is thread-pool-size
+			int threadPoolSize = Integer.parseInt(args[0]);
+			// Second argument is batch-size
+			int batchSize = Integer.parseInt(args[1]);
+			// Third argument is batch-time		
+			int batchTime = Integer.parseInt(args[2]);
+		}
 
+		Selector selector = Selector.open();
 		ServerSocketChannel serverSocket = ServerSocketChannel.open();
 		serverSocket.bind(new InetSocketAddress("localhost", 5001));
 		serverSocket.configureBlocking(false);
