@@ -1,4 +1,4 @@
-package cs455.scaling.server;
+package cs455.scaling;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -13,9 +13,6 @@ import java.util.Set;
 
 public class Server {
 	
-	private static SocketChannel client;
-	private static ByteBuffer buffer;
-
 	public static void main(String[] args) throws IOException {
 	
 		if (args.length == 3){
@@ -27,6 +24,11 @@ public class Server {
 			int batchTime = Integer.parseInt(args[2]);
 			System.out.println("threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchSize + " seconds.");
 		}
+
+		// Potential Thread Pool Manager
+//		ThreadPoolManager tpm = new ThreadPoolManager(threadPoolSize);
+
+	//**************** BEGIN PROVIDED CODE ***************
 
 		Selector selector = Selector.open();
 		ServerSocketChannel serverSocket = ServerSocketChannel.open();
@@ -97,4 +99,5 @@ public class Server {
 			buffer.clear();
 		}
 	}
+	//**************** END PROVIDED CODE ***************
 }
