@@ -8,11 +8,13 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Set;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
 import java.lang.Thread;
+import java.time.LocalDateTime;
 
 public class Client {
 	
@@ -22,39 +24,30 @@ public class Client {
 	private static SocketChannel client;
 	private static ByteBuffer buffer;
 
-	String serverHost;
-	int serverPort = -1;
+	public String serverHost = "";
+	public int serverPort = -1;
 	int messageRate = -1;
+
+	LinkedList<String> allHashes = new LinkedList<String>();
+	
+	public Client (){};
 	
 	public Client (String serverHost, int serverPort, int messageRate){
 
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
 		this.messageRate = messageRate;
-	}
 
-	public static void main(String[] args) throws IOException {
-
-		Client clientObj;
-		if (args.length == 3){
-			// First argument is server-host
-			String serverHost = args[0];
-			// Second argument is server-port
-			int serverPort = Integer.parseInt(args[1]);
-			// Third argument is message-rate
-			int messageRate = Integer.parseInt(args[2]);
-			System.out.println("serverHost: " + serverHost + ", serverPort: " + serverPort + ", messageRate: once every " + messageRate + " seconds.");
-			clientObj = new Client(serverHost, serverPort, messageRate);
-		}
 		try {
-			client = SocketChannel.open(new InetSocketAddress("localhost", 5001));
+			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
+			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
 			buffer = ByteBuffer.allocate(256);
-
 		}
+
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-		
+
 		buffer = ByteBuffer.wrap("Please send this back to me".getBytes());
 		String response = null;
 
@@ -69,17 +62,44 @@ public class Client {
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-		try{
-	
-			Date date = new Date();
-			while(true){
-				long currentTime = date.getTime();
-				System.out.println("[" + currentTime + "] Total Sent Count: " + clientObj.totalSentCount + ", Total Received Count: " + clientObj.totalReceivedCount);
-				Thread.sleep(20000);
-			}
+
+		PrintStatsThread pst = new PrintStatsThread(this);
+		pst.start();
+
+	}
+
+	public synchronized void incrementTotalSent(){
+		totalSentCount++;
+	}
+
+	public synchronized void incrementTotalReceived(){
+		totalReceivedCount++;
+	}
+
+	public synchronized int getTotalSent(){
+		return totalSentCount;
+	}
+
+	public synchronized int getTotalReceived(){
+		return totalReceivedCount;
+	}
+
+	public static void main(String[] args) throws IOException {
+
+		if (args.length == 3){
+			// First argument is server-host
+			String serverHost = args[0];
+			// Second argument is server-port
+			int serverPort = Integer.parseInt(args[1]);
+			// Third argument is message-rate
+			int messageRate = Integer.parseInt(args[2]);
+			System.out.println("serverHost: " + serverHost + ", serverPort: " + serverPort + ", messageRate: once every " + messageRate + " seconds.");
+			Client clientObj = new Client(serverHost, serverPort, messageRate);
 		}
-		catch (Exception e){
-			e.printStackTrace();
+
+		else {
+			System.out.println("Please provide three arguments: serverHost, serverPort, and messageRate (once every X seconds)");
 		}
+		return;
 	}
 }
