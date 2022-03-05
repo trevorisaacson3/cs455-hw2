@@ -13,7 +13,7 @@ import java.lang.Thread;
 
 
 
-public class ThreadPoolManager extends Thread{
+public class ThreadPoolManager{
 
 	private int totalMessagesSent = 0;
 	private int totalMessagesReceived = 0;
@@ -87,7 +87,7 @@ public class ThreadPoolManager extends Thread{
 				while (iter.hasNext()) {
 
 					SelectionKey key = iter.next();
-					// Optionally remove this, continue statements are fairly useless
+					
 					if (key.isValid() == false) {
 						continue;
 					}
