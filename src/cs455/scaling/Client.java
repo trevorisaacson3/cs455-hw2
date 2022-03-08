@@ -16,6 +16,7 @@ import java.util.Date;
 import java.time.Instant;
 import java.lang.Thread;
 import java.time.LocalDateTime;
+import java.math.BigInteger;
 
 public class Client {
 	
@@ -55,16 +56,11 @@ public class Client {
 		while (true) {
 		
 			HashMessage nextMessage = new HashMessage();
-			String messageToSend_Unhashed = nextMessage.getByteArray().toString();
-			String messageToSend_Hashed = nextMessage.getHashedString();
-			//System.out.println("Raw message: " + new String(messageToSend_Unhashed) + ".getBytes() = " + new String(messageToSend_Unhashed).getBytes());
-			System.out.println("Going to write: " + new String(messageToSend_Unhashed) + " to the server.");
-			//System.out.println("The server should respond with: " + new String(messageToSend_Hashed).trim());
+			byte[] unhashedMessageBytes = nextMessage.getByteArray();
+			String hashedMessageString = nextMessage.getHashedString();
+			System.out.println("Hashed String of bytes being sent to server: " + hashedMessageString);
 		
-			//buffer = ByteBuffer.wrap("Please send this back to me".getBytes());
-			buffer = ByteBuffer.wrap(messageToSend_Unhashed.getBytes());
-			String response = null;
-			//System.out.println("Going to write (as byte[]) : " + buffer.array());
+			buffer = ByteBuffer.wrap(unhashedMessageBytes);
 
 			try{
 				client.write(buffer);
@@ -72,10 +68,14 @@ public class Client {
 				buffer.clear();
 				client.read(buffer);
 				incrementTotalReceived();
-				response = new String(buffer.array()).trim();
-				System.out.println("Server responded with: " + response);
-				boolean successfulHash = messageToSend_Hashed == response;
-				System.out.println("Did it hash correctly? -> " + successfulHash);
+				byte[] response = buffer.array();
+				String responseString = new String(response).substring(0, 40);
+				boolean valid = false;
+				if (responseString.equals(hashedMessageString)) {
+					valid = true;
+				}
+				System.out.println("Response from server: " + responseString);
+				System.out.println("Response is valid: " + valid);
 				buffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}

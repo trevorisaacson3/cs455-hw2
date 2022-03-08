@@ -9,6 +9,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Arrays;
 import java.lang.Thread;
 
 
@@ -124,7 +125,7 @@ public class ThreadPoolManager{
 		}
 
 		private static void readAndRespond(SelectionKey key) throws IOException {
-			ByteBuffer buffer = ByteBuffer.allocate(256);
+			ByteBuffer buffer = ByteBuffer.allocate(8000);
 			SocketChannel client = (SocketChannel) key.channel();
 
 			int bytesRead = client.read(buffer);
@@ -134,20 +135,16 @@ public class ThreadPoolManager{
 				System.out.println("Client has disconnected");
 			}
 			else {
-				System.out.println("\t\tReceived: " + new String(buffer.array()));
-				System.out.println("\t\tRaw message: " + new String(buffer.array()) + ".getBytes() = " + new String(buffer.array()).getBytes());
-				//System.out.println("\t\tReceived (as byte[]) : " + buffer.array());
-	
-				
-				byte[] receivedMessage = buffer.array();
-				String receivedString = new String (buffer.array());
-				HashMessage convertToHash = new HashMessage(receivedString);
-				byte[] hashedMessage = convertToHash.getHashedString().getBytes();
-				System.out.println("Going to write back a hashed message of: " + new String(hashedMessage));
+				byte[] receivedByteArray = buffer.array();
+				HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
+				String hashedMessageString = receivedHashMessage.getHashedString();
+				System.out.println("Message being sent to client: " + hashedMessageString);
+
 
 				//This allows the buffer to now write instead of read
-				//buffer.clear();
 				buffer.flip();
+				buffer.clear();
+				buffer = ByteBuffer.wrap(hashedMessageString.getBytes());
 				client.write(buffer);
 				buffer.clear();
 			}
