@@ -22,11 +22,15 @@ public class Server {
 			int batchSize = Integer.parseInt(args[1]);
 			// Third argument is batch-time		
 			int batchTime = Integer.parseInt(args[2]);
-			System.out.println("threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchTime + " seconds.");
+			System.out.println("Starting server w/ threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchTime + " seconds.");
 			ThreadPoolManager tpm = new ThreadPoolManager(threadPoolSize);
 			tpm.run();
 
 
+		}
+
+		else{
+			System.out.println("No program arguments specified, please specify: (1) threadPoolSize, (2) batchSize, (3) batchTime (in seconds).");
 		}
 		// Potential Thread Pool Manager
 
