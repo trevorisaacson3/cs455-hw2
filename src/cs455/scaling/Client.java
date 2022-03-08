@@ -105,12 +105,12 @@ System.out.println("Going to write: " + new String(messageToSend_Unhashed) + " t
 			int serverPort = Integer.parseInt(args[1]);
 			// Third argument is message-rate
 			int messageRate = Integer.parseInt(args[2]);
-			System.out.println("serverHost: " + serverHost + ", serverPort: " + serverPort + ", messageRate: once every " + messageRate + " seconds.");
+			System.out.println("Starting client w/ serverHost: " + serverHost + ", serverPort: " + serverPort + ", messageRate: once every " + messageRate + " seconds.");
 			Client clientObj = new Client(serverHost, serverPort, messageRate);
 		}
 
 		else {
-			System.out.println("Please provide three arguments: serverHost, serverPort, and messageRate (once every X seconds)");
+			System.out.println("No program arguments specified, please specify: (1) serverHost, (2) serverPort, and (3) messageRate (once every X seconds)");
 		}
 		return;
 	}
