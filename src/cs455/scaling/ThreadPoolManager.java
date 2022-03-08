@@ -64,7 +64,7 @@ public class ThreadPoolManager{
 //		return;
 //	}
 
-	@Override
+	//@Override
 	public void run() {
 		try {
 			Selector selector = Selector.open();
@@ -132,8 +132,18 @@ public class ThreadPoolManager{
 			}
 			else {
 				System.out.println("\t\tReceived: " + new String(buffer.array()));
+				System.out.println("\t\tRaw message: " + new String(buffer.array()) + ".getBytes() = " + new String(buffer.array()).getBytes());
+				//System.out.println("\t\tReceived (as byte[]) : " + buffer.array());
+	
+				
+				byte[] receivedMessage = buffer.array();
+				String receivedString = new String (buffer.array());
+				HashMessage convertToHash = new HashMessage(receivedString);
+				byte[] hashedMessage = convertToHash.getHashedString().getBytes();
+				System.out.println("Going to write back a hashed message of: " + new String(hashedMessage));
 
 				//This allows the buffer to now write instead of read
+				//buffer.clear();
 				buffer.flip();
 				client.write(buffer);
 				buffer.clear();

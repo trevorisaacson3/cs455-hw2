@@ -8,6 +8,7 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
 import java.sql.Timestamp;
@@ -41,22 +42,33 @@ public class Client {
 		try {
 			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
 			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
-			buffer = ByteBuffer.allocate(256);
+			buffer = ByteBuffer.allocate(8);
 		}
 
 		catch (IOException e) {
 			e.printStackTrace();
 		}
-
-		buffer = ByteBuffer.wrap("Please send this back to me".getBytes());
+		
+		HashMessage nextMessage = new HashMessage();
+		String messageToSend_Unhashed = nextMessage.getByteArray().toString();
+		String messageToSend_Hashed = nextMessage.getHashedString();
+		//System.out.println("Raw message: " + new String(messageToSend_Unhashed) + ".getBytes() = " + new String(messageToSend_Unhashed).getBytes());
+System.out.println("Going to write: " + new String(messageToSend_Unhashed) + " to the server.");
+//		System.out.println("The server should respond with: " + new String(messageToSend_Hashed).trim());
+	
+		//buffer = ByteBuffer.wrap("Please send this back to me".getBytes());
+		buffer = ByteBuffer.wrap(messageToSend_Unhashed.getBytes());
 		String response = null;
-
+		//System.out.println("Going to write (as byte[]) : " + buffer.array());
+		
 		try{
 			client.write(buffer);
 			buffer.clear();
 			client.read(buffer);
 			response = new String(buffer.array()).trim();
 			System.out.println("Server responded with: " + response);
+			boolean successfulHash = messageToSend_Hashed == response;
+			System.out.println("Did it hash correctly? -> " + successfulHash);
 			buffer.clear();
 		}
 		catch (IOException e) {
