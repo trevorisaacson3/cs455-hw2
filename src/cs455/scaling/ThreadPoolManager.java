@@ -43,12 +43,15 @@ public class ThreadPoolManager{
 
 	// Number of threads to initialize and keep alive for the duration of the program
 	private final int numThreads;
+	// Port Number the Server is listening on
+	private final int portnum;
 
 	// TODO: Data structure for containing all the threads here
 	// TODO: Data structure for queue of pending tasks here
 
-	public ThreadPoolManager(int numThreads){
+	public ThreadPoolManager(int portnum, int numThreads){
 		this.numThreads = numThreads;
+		this.portnum = portnum;
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
@@ -69,7 +72,7 @@ public class ThreadPoolManager{
 		try {
 			Selector selector = Selector.open();
 			ServerSocketChannel serverSocket = ServerSocketChannel.open();
-			serverSocket.bind(new InetSocketAddress( 5001));
+			serverSocket.bind(new InetSocketAddress(portnum));
 			serverSocket.configureBlocking(false);
 
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
