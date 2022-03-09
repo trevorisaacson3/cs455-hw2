@@ -125,28 +125,25 @@ public class ThreadPoolManager{
 		}
 
 		private static void readAndRespond(SelectionKey key) throws IOException {
-			ByteBuffer buffer = ByteBuffer.allocate(8000);
+			ByteBuffer readBuffer = ByteBuffer.allocate(8000);
 			SocketChannel client = (SocketChannel) key.channel();
 
-			int bytesRead = client.read(buffer);
+			int bytesRead = client.read(readBuffer);
 
 			if (bytesRead == -1){
 				client.close();
 				System.out.println("Client has disconnected");
 			}
 			else {
-				byte[] receivedByteArray = buffer.array();
+				byte[] receivedByteArray = readBuffer.array();
 				HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
 				String hashedMessageString = receivedHashMessage.getHashedString();
 				System.out.println("Message being sent to client: " + hashedMessageString);
-
-
-				//This allows the buffer to now write instead of read
-				buffer.flip();
-				buffer.clear();
-				buffer = ByteBuffer.wrap(hashedMessageString.getBytes());
-				client.write(buffer);
-				buffer.clear();
+				readBuffer.clear();
+				ByteBuffer writeBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
+				writeBuffer = ByteBuffer.wrap(hashedMessageString.getBytes());
+				client.write(writeBuffer);
+				writeBuffer.clear();
 			}
 		}
 
