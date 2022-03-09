@@ -125,7 +125,7 @@ public class ThreadPoolManager{
 		}
 
 		private static void readAndRespond(SelectionKey key) throws IOException {
-			ByteBuffer readBuffer = ByteBuffer.allocate(8000);
+			ByteBuffer readBuffer = ByteBuffer.allocate(8 * Constants.KB);
 			SocketChannel client = (SocketChannel) key.channel();
 
 			int bytesRead = client.read(readBuffer);
