@@ -44,7 +44,7 @@ public class Client {
 		try {
 			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
 			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
-			writeBuffer = ByteBuffer.allocate(8);
+			writeBuffer = ByteBuffer.allocate(8*Constants.KB);
 		}
 
 		catch (IOException e) {

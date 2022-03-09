@@ -1,23 +1,64 @@
 package cs455.scaling;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.Arrays;
-import java.lang.Thread;
-
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.SynchronousQueue;
 
 
 public class ThreadPoolManager{
 
 	private int totalMessagesSent = 0;
 	private int totalMessagesReceived = 0;
+
+
+	// Number of threads to initialize and keep alive for the duration of the program
+	private final int numThreads;
+	// Port Number the Server is listening on
+	private final int portnum;
+	private final int batchSize;
+	private final int batchTime;
+
+	// TODO: Data structure for containing all the threads here
+	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
+	// TODO: Data structure for queue of pending tasks here
+	protected LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+
+
+	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
+		this.numThreads = numThreads;
+		this.portnum = portnum;
+		this.batchSize = batchSize;
+		this.batchTime = batchTime;
+
+		this.pendingTasks = new LinkedBlockingDeque<>(batchSize);
+		//TODO: Set time limit in between tasks using batchTime (in seconds).
+
+		PrintStatsThread pst = new PrintStatsThread(this);
+		pst.start();
+
+
+		// Create {numThreads} number of threads here and add them to the thread pool, initializing all them in the idle state.
+		 for (int i = 0; i < numThreads; i++){
+			 WorkerThread nextWorker = new WorkerThread();
+			 // nextWorker.start();
+		 	allWorkerThreads.add(nextWorker);
+		 }
+	}
+
+
+//	public void assignTask(/* params? here */){ //Purpose: Assign task to a thread
+//		return;
+//	}
 
 	public int getTotalSent(){
 		return totalMessagesSent;
@@ -42,31 +83,6 @@ public class ThreadPoolManager{
 		return 0.0;
 	}
 
-	// Number of threads to initialize and keep alive for the duration of the program
-	private final int numThreads;
-	// Port Number the Server is listening on
-	private final int portnum;
-
-	// TODO: Data structure for containing all the threads here
-	// TODO: Data structure for queue of pending tasks here
-
-	public ThreadPoolManager(int portnum, int numThreads){
-		this.numThreads = numThreads;
-		this.portnum = portnum;
-		PrintStatsThread pst = new PrintStatsThread(this);
-		pst.start();
-
-
-		// Create {numThreads} number of threads here and add them to the thread pool, initializing all them in the idle state.
-		// for (int i = 0; i < numThreads; i++){
-		// 	intializeNewThread();
-		// }
-	}
-
-
-//	public void assignTask(/* params? here */){ //Purpose: Assign task to a thread
-//		return;
-//	}
 
 	//@Override
 	public void run() {
@@ -98,12 +114,15 @@ public class ThreadPoolManager{
 
 					// Open new connection on serverSocket
 					if (key.isAcceptable()) {
-						register(selector, serverSocket);
+						// key.attach(this) may be useful for passing an instance of this class to the workerThread so it may increment sent/received messages here
+						pendingTasks.add(key);
+						register(selector, serverSocket); //TODO: Make the workerThread register instead of the ThreadPoolManager
 					}
 
 					// Read data from previous connection
 					if (key.isReadable()) {
-						readAndRespond(key);
+						pendingTasks.add(key);
+						readAndRespond(key); //TODO: Make the workerThread register instead of the ThreadPoolManager
 					}
 
 					// Remove from the set when done
