@@ -30,7 +30,7 @@ public class Client {
 	public int serverPort = -1;
 	int messageRate = -1;
 
-	LinkedList<String> allHashes = new LinkedList<String>();
+	LinkedList<String> unverifiedHashes = new LinkedList<String>();
 	
 	public Client (){};
 	
@@ -65,17 +65,19 @@ public class Client {
 			try{
 				client.write(buffer);
 				incrementTotalSent();
+				unverifiedHashes.add(hashedMessageString);
 				buffer.clear();
 				client.read(buffer);
 				incrementTotalReceived();
 				byte[] response = buffer.array();
 				String responseString = new String(response).substring(0, 40);
-				boolean valid = false;
-				if (responseString.equals(hashedMessageString)) {
-					valid = true;
+				boolean verified = false;
+				if (unverifiedHashes.contains(responseString)) {
+					verified = true;
+					unverifiedHashes.remove(responseString);
 				}
 				System.out.println("Response from server: " + responseString);
-				System.out.println("Response is valid: " + valid);
+				System.out.println("Response has been verified: " + verified);
 				buffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
