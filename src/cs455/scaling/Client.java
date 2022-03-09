@@ -24,7 +24,8 @@ public class Client {
 	private int totalReceivedCount= 0;
 
 	private static SocketChannel client;
-	private static ByteBuffer buffer;
+	private static ByteBuffer writeBuffer;
+	private static ByteBuffer readBuffer;
 
 	public String serverHost = "";
 	public int serverPort = -1;
@@ -43,7 +44,7 @@ public class Client {
 		try {
 			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
 			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
-			buffer = ByteBuffer.allocate(8);
+			writeBuffer = ByteBuffer.allocate(8);
 		}
 
 		catch (IOException e) {
@@ -53,24 +54,26 @@ public class Client {
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
-		while (true) {
+		for (int i = 0; i < 100; i++) {
+		//while (true) {
 		
 			HashMessage nextMessage = new HashMessage();
 			byte[] unhashedMessageBytes = nextMessage.getByteArray();
 			String hashedMessageString = nextMessage.getHashedString();
 			System.out.println("Hashed String of bytes being sent to server: " + hashedMessageString);
 		
-			buffer = ByteBuffer.wrap(unhashedMessageBytes);
+			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
+			readBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
 
 			try{
-				client.write(buffer);
+				client.write(writeBuffer);
 				incrementTotalSent();
 				unverifiedHashes.add(hashedMessageString);
-				buffer.clear();
-				client.read(buffer);
+				writeBuffer.clear();
+				client.read(readBuffer);
 				incrementTotalReceived();
-				byte[] response = buffer.array();
-				String responseString = new String(response).substring(0, 40);
+				byte[] response = readBuffer.array();
+				String responseString = new String(response);
 				boolean verified = false;
 				if (unverifiedHashes.contains(responseString)) {
 					verified = true;
@@ -78,7 +81,7 @@ public class Client {
 				}
 				System.out.println("Response from server: " + responseString);
 				System.out.println("Response has been verified: " + verified);
-				buffer.clear();
+				readBuffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
 			catch (IOException | InterruptedException e) {
