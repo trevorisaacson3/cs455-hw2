@@ -6,7 +6,7 @@ import java.security.MessageDigest;
 
 public class HashMessage {
 
-	private byte[] randomBytes = new byte[8000];
+	private byte[] randomBytes = new byte[8 * Constants.KB];
 	private String hashedString = "";
 
 	public HashMessage(){
