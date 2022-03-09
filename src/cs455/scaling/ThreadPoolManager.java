@@ -1,7 +1,6 @@
 package cs455.scaling;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -9,9 +8,9 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.Arrays;
-import java.lang.Thread;
-
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 
 
 public class ThreadPoolManager{
@@ -48,8 +47,9 @@ public class ThreadPoolManager{
 	private final int portnum;
 
 	// TODO: Data structure for containing all the threads here
+	Set<WorkerThread> allWorkerThreads;
 	// TODO: Data structure for queue of pending tasks here
-
+	BlockingQueue<SelectionKey> pendingTasks = new SynchronousQueue<>(); // This is one of the 7 different types of implementations of the BlockingQueue interface
 	public ThreadPoolManager(int portnum, int numThreads){
 		this.numThreads = numThreads;
 		this.portnum = portnum;
@@ -58,9 +58,9 @@ public class ThreadPoolManager{
 
 
 		// Create {numThreads} number of threads here and add them to the thread pool, initializing all them in the idle state.
-		// for (int i = 0; i < numThreads; i++){
-		// 	intializeNewThread();
-		// }
+		 for (int i = 0; i < numThreads; i++){
+		 	allWorkerThreads.add(new WorkerThread());
+		 }
 	}
 
 
