@@ -1,4 +1,4 @@
-// The purpose of this class is to register  and  deregister incoming SelectionKeys on the server side.
+// The purpose of this class is to house the selector object itself and to keep reading for new keys to either register into the selector system or add to the queue for other workerThreads to handle
 package cs455.scaling;
 import java.io.IOException;
 import java.net.InetSocketAddress;
