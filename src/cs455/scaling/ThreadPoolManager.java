@@ -15,7 +15,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.SynchronousQueue;
 
 
-public class ThreadPoolManager{
+public class ThreadPoolManager extends Thread{
 
 	private int totalMessagesSent = 0;
 	private int totalMessagesReceived = 0;
@@ -23,15 +23,24 @@ public class ThreadPoolManager{
 
 	// Number of threads to initialize and keep alive for the duration of the program
 	private final int numThreads;
+
 	// Port Number the Server is listening on
 	private final int portnum;
+
+	// Maximum size of the list of pending tasks for workerThreads to handle
 	private final int batchSize;
+	
+	// Maximum time duration that tasks should be sitting in the pendingTasks queue before being assigned to workerThreads 
 	private final int batchTime;
 
-	// TODO: Data structure for containing all the threads here
+	// Copy of the selector used in KeySelector (//TODO: Determine if this is necessary as a class variable)
+	public static Selector selector;
+
+	// Data structure for containing all the threads
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
-	// TODO: Data structure for queue of pending tasks here
-	protected LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+
+	// Data structure for queue of pending tasks
+	protected static LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 
 	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
@@ -46,19 +55,38 @@ public class ThreadPoolManager{
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
-
-		// Create {numThreads} number of threads here and add them to the thread pool, initializing all them in the idle state.
-		 for (int i = 0; i < numThreads; i++){
-			 WorkerThread nextWorker = new WorkerThread();
-			 // nextWorker.start();
+		try{
+			this.selector = Selector.open();
+		}
+		catch (IOException e){
+			e.printStackTrace();
+		}
+		
+		// This creates and initializes all the workerThreads 
+		for (int i = 0; i < numThreads; i++){
+			WorkerThread nextWorker = new WorkerThread(i, this.selector);
+			nextWorker.start();
 		 	allWorkerThreads.add(nextWorker);
-		 }
+		}
+
+
+		
+		KeySelector ks = new KeySelector(this, selector, portnum);
+		ks.start();
 	}
 
+	public synchronized LinkedBlockingDeque<SelectionKey> getTaskList(){
+		return pendingTasks;
+	} 
 
-//	public void assignTask(/* params? here */){ //Purpose: Assign task to a thread
-//		return;
-//	}
+	public void addTask(SelectionKey key){
+		boolean keyGotInserted = false;
+		while (keyGotInserted == false){
+			if (pendingTasks.offerLast(key) == true){
+				keyGotInserted = true;
+			}
+		}
+	}
 
 	public int getTotalSent(){
 		return totalMessagesSent;
@@ -83,89 +111,43 @@ public class ThreadPoolManager{
 		return 0.0;
 	}
 
+	public void checkForNewKeys(){
 
-	//@Override
-	public void run() {
-		try {
-			Selector selector = Selector.open();
-			ServerSocketChannel serverSocket = ServerSocketChannel.open();
-			serverSocket.bind(new InetSocketAddress(portnum));
-			serverSocket.configureBlocking(false);
 
-			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-
-			while (true) {
-				System.out.println("Listening for new connections or messages");
-
-				selector.select();
-
-				System.out.println("\tActivity on selector!");
-
-				Set<SelectionKey> selectedKeys = selector.selectedKeys();
-
-				Iterator<SelectionKey> iter = selectedKeys.iterator();
-				while (iter.hasNext()) {
-
-					SelectionKey key = iter.next();
-					
-					if (key.isValid() == false) {
-						continue;
+		while (true){
+			// Use this for debugging the pendingTasks queue if keys in it are not being taken by the workerThreads for some reason.
+			// try{
+			// 	// Thread.sleep(3000);
+			// 	System.out.println("Size of pendingTasks is: " + pendingTasks.size() + ", waiting for size to reach: " + batchSize);
+			// }
+			// catch (InterruptedException e){
+			// 	e.printStackTrace();
+			// }
+			int i = 0;
+			if (this.pendingTasks.size() == batchSize){
+				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
+					for(SelectionKey key : pendingTasks){
+						WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
+						if (nextWorker != null){
+							// System.out.println("Worker #" + nextWorker.workerID + " is available");
+							nextWorker.setNextKey(key);
+							nextWorker.setWorkingStatus();
+							pendingTasks.remove(key);
+						}
 					}
-
-					// Open new connection on serverSocket
-					if (key.isAcceptable()) {
-						// key.attach(this) may be useful for passing an instance of this class to the workerThread so it may increment sent/received messages here
-						pendingTasks.add(key);
-						register(selector, serverSocket); //TODO: Make the workerThread register instead of the ThreadPoolManager
-					}
-
-					// Read data from previous connection
-					if (key.isReadable()) {
-						pendingTasks.add(key);
-						readAndRespond(key); //TODO: Make the workerThread register instead of the ThreadPoolManager
-					}
-
-					// Remove from the set when done
-					iter.remove();
 				}
 			}
 		}
-		catch (IOException e){
-			e.printStackTrace();
+	}
+
+	private WorkerThread getNextAvailableWorker(){
+		while (true){
+			for (WorkerThread wt : allWorkerThreads){
+				if (wt.isAvailable()){
+					return wt;
+				}
+			}	
 		}
 	}
 
-		private static void register(Selector selector, ServerSocketChannel serverSocket) throws IOException {
-			SocketChannel client = serverSocket.accept();
-
-			client.configureBlocking(false);
-			client.register(selector, SelectionKey.OP_READ);
-			System.out.println("\t\tNew client registered.");
-		}
-
-		private static void readAndRespond(SelectionKey key) throws IOException {
-			ByteBuffer readBuffer = ByteBuffer.allocate(8 * Constants.KB);
-			SocketChannel client = (SocketChannel) key.channel();
-
-			int bytesRead = client.read(readBuffer);
-
-			if (bytesRead == -1){
-				client.close();
-				System.out.println("Client has disconnected");
-			}
-			else {
-				byte[] receivedByteArray = readBuffer.array();
-				HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
-				String hashedMessageString = receivedHashMessage.getHashedString();
-				System.out.println("Message being sent to client: " + hashedMessageString);
-				readBuffer.clear();
-				ByteBuffer writeBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
-				writeBuffer = ByteBuffer.wrap(hashedMessageString.getBytes());
-				client.write(writeBuffer);
-				writeBuffer.clear();
-			}
-		}
-
-
-
-	}
+}

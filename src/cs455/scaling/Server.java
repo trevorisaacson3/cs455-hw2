@@ -26,7 +26,7 @@ public class Server {
 			int batchTime = Integer.parseInt(args[3]);
 			System.out.println("Starting server w/ portnum: " + portnum + ", threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchTime + " seconds.");
 			ThreadPoolManager tpm = new ThreadPoolManager(portnum, threadPoolSize, batchSize, batchTime);
-			tpm.run();
+			tpm.checkForNewKeys();
 
 
 		}
