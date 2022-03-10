@@ -69,8 +69,7 @@ public class ThreadPoolManager extends Thread{
 		 	allWorkerThreads.add(nextWorker);
 		}
 
-
-		
+		// This is the selector that scans for new keys, registers new nodes, and creates new jobs.
 		KeySelector ks = new KeySelector(this, selector, portnum);
 		ks.start();
 	}
