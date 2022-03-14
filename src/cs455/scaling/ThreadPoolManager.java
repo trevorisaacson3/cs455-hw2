@@ -23,6 +23,9 @@ public class ThreadPoolManager extends Thread{
 	// Number of threads to initialize and keep alive for the duration of the program
 	private final int numThreads;
 
+	// Number of threads to initialize and keep alive for the duration of the program
+	private int totalNumConnections;
+
 	// Port Number the Server is listening on
 	private final int portnum;
 
@@ -91,19 +94,16 @@ public class ThreadPoolManager extends Thread{
 		return totalMessagesReceived;
 	}
 
-	public int getNumNodesConnected(){
-		//TODO Implement datastructure for holding nodes and grab the size of the datastructure here.
-		return 0;
+	public synchronized void decrementNodesConnected(){
+		--totalNumConnections;
+	}	
+
+	public synchronized void incrementNodesConnected(){
+		++totalNumConnections;
 	}
 
-	public double getMeanClientThroughput(){
-		//TODO Calculate mean client throughput and return here
-		return 0.0;
-	}
-
-	public double getStdDevThroughput(){
-		//TODO Calculate std dev of client throughput and return here
-		return 0.0;
+	public synchronized int getNumNodesConnected(){
+		return totalNumConnections;
 	}
 
 	public synchronized void incrementTotalReceived(){
