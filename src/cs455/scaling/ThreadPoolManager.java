@@ -3,7 +3,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
@@ -33,15 +32,18 @@ public class ThreadPoolManager extends Thread{
 	// Maximum time duration that tasks should be sitting in the pendingTasks queue before being assigned to workerThreads 
 	private final int batchTime;
 
-	// Copy of the selector used in KeySelector (//TODO: Determine if this is necessary as a class variable)
-	public static Selector selector;
-
 	// Data structure for containing all the threads
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
 	protected static LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
+	// Class for managing time between last batch was dispersed to workerThreads
+	private BatchTimer batchTimer;
+
+
+	//Used for debugging purposes to keep track of the number of tasks generated variables (DELETE WHEN NO LONGER NEEDED)
+	int totalNumTasks = 0;
 
 	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
 		this.numThreads = numThreads;
@@ -50,27 +52,20 @@ public class ThreadPoolManager extends Thread{
 		this.batchTime = batchTime;
 
 		this.pendingTasks = new LinkedBlockingDeque<>(batchSize);
-		//TODO: Set time limit in between tasks using batchTime (in seconds).
-
+		batchTimer = new BatchTimer(batchTime);
+		batchTimer.start();
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
-
-		try{
-			this.selector = Selector.open();
-		}
-		catch (IOException e){
-			e.printStackTrace();
-		}
 		
 		// This creates and initializes all the workerThreads 
 		for (int i = 0; i < numThreads; i++){
-			WorkerThread nextWorker = new WorkerThread(i, this.selector);
+			WorkerThread nextWorker = new WorkerThread(i, this);
 			nextWorker.start();
 		 	allWorkerThreads.add(nextWorker);
 		}
 
 		// This is the selector that scans for new keys, registers new nodes, and creates new jobs.
-		KeySelector ks = new KeySelector(this, selector, portnum);
+		KeySelector ks = new KeySelector(this, portnum);
 		ks.start();
 	}
 
@@ -82,16 +77,17 @@ public class ThreadPoolManager extends Thread{
 		boolean keyGotInserted = false;
 		while (keyGotInserted == false){
 			if (pendingTasks.offerLast(key) == true){
+				// System.out.println("Added new key");
 				keyGotInserted = true;
 			}
 		}
 	}
 
-	public int getTotalSent(){
+	public synchronized int getTotalSent(){
 		return totalMessagesSent;
 	}
 
-	public int getTotalMessagesReceived(){
+	public synchronized int getTotalMessagesReceived(){
 		return totalMessagesReceived;
 	}
 
@@ -110,27 +106,29 @@ public class ThreadPoolManager extends Thread{
 		return 0.0;
 	}
 
+	public synchronized void incrementTotalReceived(){
+		++totalMessagesReceived;
+	}
+	
+	public synchronized void incrementTotalSent(){
+		++totalMessagesSent;
+	}
+
 	public void checkForNewKeys(){
 
 
 		while (true){
-			// Use this for debugging the pendingTasks queue if keys in it are not being taken by the workerThreads for some reason.
-			// try{
-			// 	// Thread.sleep(3000);
-			// 	System.out.println("Size of pendingTasks is: " + pendingTasks.size() + ", waiting for size to reach: " + batchSize);
-			// }
-			// catch (InterruptedException e){
-			// 	e.printStackTrace();
-			// }
-			int i = 0;
-			if (this.pendingTasks.size() == batchSize){
+			boolean batchReady = batchTimer.getBatchReadyStatus();
+			if (this.pendingTasks.size() == batchSize || batchReady == true){
 				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
 					for(SelectionKey key : pendingTasks){
+						// System.out.println("There are this many keys waiting to be taken from the queue: " + pendingTasks.size());
 						WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
 						if (nextWorker != null){
-							// System.out.println("Worker #" + nextWorker.workerID + " is available");
+							++totalNumTasks;
 							nextWorker.setNextKey(key);
 							nextWorker.setWorkingStatus();
+							nextWorker.notifyWorker(totalNumTasks);
 							pendingTasks.remove(key);
 						}
 					}
