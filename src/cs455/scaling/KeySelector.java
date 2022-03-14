@@ -92,6 +92,7 @@ public class KeySelector extends Thread{
 		SocketChannel client = serverSocket.accept();
 		client.configureBlocking(false);
 		client.register(selector, SelectionKey.OP_READ);
+		this.tpm.incrementNodesConnected();
 		System.out.println("\t\tNew client registered using selector");
 		notify();
 	}
