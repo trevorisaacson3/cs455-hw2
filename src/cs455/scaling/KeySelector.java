@@ -15,64 +15,64 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.SynchronousQueue;
 
-
-
 public class KeySelector extends Thread{
 
     private ThreadPoolManager tpm;
     private int portnum = -1;
-	public static Selector selector;
 	public static ServerSocketChannel serverSocket;
+	public Selector selector;
 
-    public KeySelector(ThreadPoolManager tpm, Selector selector, int portnum){
+    public KeySelector(ThreadPoolManager tpm, int portnum){
         this.tpm = tpm;
-		this.selector = selector;
 		this.portnum = portnum;
     }
 
-	// This was used for registering from the workerThread, but registering from the workerThread doesn't currently work
-	// public ServerSocketChannel getServerSocketChannel(){
-	// 	return this.serverSocket;
-	// }
-
 	@Override
 	public void run() {
+		readKeys();
+	}
+
+	private synchronized void readKeys(){
 		try {
-			// Selector selector = Selector.open(); // The selector is opened from ThreadPoolManager instead.
+
+			selector = Selector.open();
 			serverSocket = ServerSocketChannel.open();
 			serverSocket.bind(new InetSocketAddress(portnum));
 			serverSocket.configureBlocking(false);
 
 			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
 
-			int numKeysRead = 0;
-
+			HashSet<SelectionKey> registeredKeys = new HashSet<SelectionKey>();
 			while (true) {
-				// System.out.println("Listening for new connections or messages");
 				selector.select();
-				// System.out.println("\tActivity on selector!");
 				Set<SelectionKey> selectedKeys = selector.selectedKeys();
 				Iterator<SelectionKey> iter = selectedKeys.iterator();
-
 				while (iter.hasNext()) {
-					// System.out.println("Number of keys is " + selectedKeys.size());
-					// System.out.println("Number of keys read so far is " + ++numKeysRead);
 					SelectionKey key = iter.next();
+					// System.out.println("KeyOPS is" + key.interestOps());
 					
 					if (key.isValid() == false) {
 						continue;
 					}
 
-					// Open new connection on serverSocket
-					if (key.isAcceptable()) {
-						// Registering is currently handled by the selector itself, not sure if the workerThreads are supposed to handle registering, but workerNodes handling registering does not currently work
-						register();
+					else if (key.isAcceptable() && !(registeredKeys.contains(key))) {
+						registeredKeys.add(key);
+						// System.out.println("NEW REGISTER KEY");
+						key.attach(this);
+						tpm.addTask(key);
+						try{
+							wait();
+						}
+						catch(InterruptedException e){
+							e.printStackTrace();
+						}
 					}
 
-					// Read data from previous connection
-					if (key.isReadable()) {
+					else if (key.isReadable()) {
+						// System.out.println("NEW RESPOND KEY, Iteration #" + numIters);
 						//Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
+						key.channel().register(selector, SelectionKey.OP_WRITE);
 					}
 
 					// Remove from the set when done
@@ -83,13 +83,17 @@ public class KeySelector extends Thread{
 		catch (IOException e){
 			e.printStackTrace();
 		}
+
 	}
 
-	public synchronized static void register() throws IOException {
+
+	public synchronized void register() throws IOException {
+		System.out.println("Trying to register a key");
 		SocketChannel client = serverSocket.accept();
 		client.configureBlocking(false);
 		client.register(selector, SelectionKey.OP_READ);
 		System.out.println("\t\tNew client registered using selector");
+		notify();
 	}
 
 }
