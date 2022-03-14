@@ -36,6 +36,8 @@ public class Client {
 	public Client (){};
 	
 	public Client (String serverHost, int serverPort, int messageRate){
+		AutomaticExit ae = new AutomaticExit(1);
+		ae.start();
 
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
@@ -54,16 +56,18 @@ public class Client {
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
-		for (int i = 0; i < 100; i++) {
-		//while (true) {
+		while (true) {
 		
 			HashMessage nextMessage = new HashMessage();
 			byte[] unhashedMessageBytes = nextMessage.getByteArray();
 			String hashedMessageString = nextMessage.getHashedString();
-			System.out.println("Hashed String of bytes being sent to server: " + hashedMessageString);
+			System.out.println("Sent: " + nextMessage.bytesToString(unhashedMessageBytes).substring(0,5));
+			System.out.println("Expecting: " + hashedMessageString.substring(0,5));
 		
 			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
-			readBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
+			System.out.println("Message to send is " + unhashedMessageBytes.length + " bytes long");
+			// readBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
+			readBuffer = ByteBuffer.allocate(Constants.KB * 8);
 
 			try{
 				client.write(writeBuffer);
@@ -74,17 +78,21 @@ public class Client {
 				incrementTotalReceived();
 				byte[] response = readBuffer.array();
 				String responseString = new String(response);
+				responseString = responseString.substring(0,40); // Trim excess padded zeros off of string
 				boolean verified = false;
 				if (unverifiedHashes.contains(responseString)) {
 					verified = true;
 					unverifiedHashes.remove(responseString);
 				}
-				System.out.println("Response from server: " + responseString);
-				System.out.println("Response has been verified: " + verified);
+				System.out.println("Response from server: " + responseString.substring(0,5));
+				System.out.println("Response valid?: " + verified);
+				System.out.println("Length expected: " + hashedMessageString.length() + " actual: " + responseString.length());
+
 				readBuffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
 			catch (IOException | InterruptedException e) {
+				System.out.println("Disconnected from SocketChannel, did the server close?");
 				e.printStackTrace();
 			}
 		}
