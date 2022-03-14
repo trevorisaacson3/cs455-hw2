@@ -19,12 +19,11 @@ public class WorkerThread extends Thread{
     private boolean isAvailable = false;
     private ThreadPoolManager tpm;
     private SelectionKey nextKey = null;
-    static Selector selector;
     public int workerID = -1;
 
-    public WorkerThread(int workerID, Selector selector){
+    public WorkerThread(int workerID, ThreadPoolManager tpm){
         this.workerID = workerID;
-        this.selector = selector;
+        this.tpm = tpm;
     };
 
     public boolean isAvailable(){
@@ -35,23 +34,20 @@ public class WorkerThread extends Thread{
         isAvailable = false;
     }
 
+    public synchronized void notifyWorker(int keyNumber){
+            System.out.println("Worker # " + workerID + " is working on key #" + keyNumber);
+            notify();
+    }
+
     private synchronized void waitForNewTask() {
             this.isAvailable = true; // Worker is available and waiting
-            boolean gotNextKey = false;
-            while (gotNextKey == false){
                 try{
-                    Thread.sleep(3000);
-                    // System.out.println("\t\t %%% Worker # " +workerID + " is waiting for a key to begin working, is it here yet? ->" + (nextKey == null));
+                    wait();
+                    System.out.println("Worker # " + workerID + " is now proceeding to work");
                 }
                 catch (InterruptedException e){
                     e.printStackTrace();
                 }
-                
-                if (this.nextKey != null){
-                    // System.out.println("\t\t $$$ WorkerThread # " + workerID + " received key, it is now working.");
-                    gotNextKey = true;
-                }
-            }
     }
 
     public void setNextKey(SelectionKey nextKey){
@@ -59,26 +55,29 @@ public class WorkerThread extends Thread{
     }
 
     private void completeNextTask(){
-
+        System.out.println("Worker # " + workerID + "\t Starting Task");
         try{
-            // This block of code actually breaks the program, the selector in KeySelector.java apparently has to do registering or else the selector refuses to read beyond the first key it receives.
-	        // if (nextKey.isAcceptable()) {
-            //     KeySelector ks = (KeySelector) nextKey.attachment();
-            //     ServerSocketChannel ss = ks.getServerSocketChannel();
-            //     ks.register();
-            // }
+	        if (nextKey.isAcceptable()) {
+                System.out.println("Worker # " + workerID + "\t Found register key");
+                KeySelector ks = (KeySelector) nextKey.attachment();
+                ks.register();
+            }
     
-            if (nextKey.isReadable()) {
+            else if (nextKey.isWritable()) {
+                System.out.println("Worker # " + workerID + "\t Found writable key");
+                tpm.incrementTotalReceived();
                 this.readAndRespond(nextKey, workerID);
+                tpm.incrementTotalSent();
             }
         }
         catch (IOException e){
             e.printStackTrace();
         }
+        System.out.println("Worker # " + workerID + "\t Finished task.");
     }
 
 	public static void readAndRespond(SelectionKey key, int workerID) throws IOException {
-			ByteBuffer readBuffer = ByteBuffer.allocate(8 * Constants.KB);
+			ByteBuffer readBuffer = ByteBuffer.allocate(Constants.KB * 8);
 			SocketChannel client = (SocketChannel) key.channel();
 			int bytesRead = client.read(readBuffer);
 
@@ -89,13 +88,16 @@ public class WorkerThread extends Thread{
 			else {
 				byte[] receivedByteArray = readBuffer.array();
 				HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
+				System.out.println("WorkerThread # " + workerID  + "\treceived: " + receivedHashMessage.bytesToString(receivedByteArray).substring(0,5) + " size: " + receivedByteArray.length + "<- (8192)?");
+
 				String hashedMessageString = receivedHashMessage.getHashedString();
-				System.out.println("Message being sent **FROM WORKERTHREAD # " + workerID + " to client : " + hashedMessageString);
+				System.out.println("WorkerThread # " + workerID  + "\tsent back: " + hashedMessageString.substring(0,5) + " size: " + hashedMessageString.getBytes().length + " <- (40)?");
 				readBuffer.clear();
-				ByteBuffer writeBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
+				ByteBuffer writeBuffer = ByteBuffer.allocate(Constants.KB * 8);
 				writeBuffer = ByteBuffer.wrap(hashedMessageString.getBytes());
 				client.write(writeBuffer);
 				writeBuffer.clear();
+                client.register(key.selector(), SelectionKey.OP_READ);
 			}
 		}
 
@@ -109,7 +111,7 @@ public class WorkerThread extends Thread{
             waitForNewTask();
             // Do task
             completeNextTask();
-            // Set task as complete by marking this key as null; 
+            // Set key as null to prevent accidentally working on the same key twice; 
             this.nextKey = null;
         }
     }
