@@ -76,12 +76,13 @@ public class WorkerThread extends Thread{
         System.out.println("Worker # " + workerID + "\t Finished task.");
     }
 
-	public static void readAndRespond(SelectionKey key, int workerID) throws IOException {
+	public void readAndRespond(SelectionKey key, int workerID) throws IOException {
 			ByteBuffer readBuffer = ByteBuffer.allocate(Constants.KB * 8);
 			SocketChannel client = (SocketChannel) key.channel();
 			int bytesRead = client.read(readBuffer);
 
 			if (bytesRead == -1){
+                tpm.decrementNodesConnected();
 				client.close();
 				System.out.println("Client has disconnected **FROM WORKERTHREAD #" + workerID);
 			}
