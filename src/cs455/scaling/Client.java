@@ -11,9 +11,6 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
-
-import cs455.scaling.ClientReceiverThread;
-
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
@@ -59,9 +56,6 @@ public class Client {
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
-		ClientReceiverThread crt = new ClientReceiverThread(client, this);
-		crt.start();
-
 		while (true) {
 		
 			HashMessage nextMessage = new HashMessage();
@@ -83,14 +77,6 @@ public class Client {
 				e.printStackTrace();
 			}
 		}
-	}
-
-	public synchronized LinkedList<String> getUnverifiedHashes(){
-		return unverifiedHashes;
-	}
-
-	public synchronized void addToUnverifiedHashes(String newHash){
-		unverifiedHashes.add(newHash);
 	}
 
 	public synchronized void incrementTotalSent(){
