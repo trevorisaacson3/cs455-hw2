@@ -14,7 +14,7 @@ public class BatchTimer extends Thread{
         return batchReady;
     }
 
-    private synchronized void setBatchReady(boolean batchStatus){
+    public synchronized void setBatchReady(boolean batchStatus){
         batchReady = batchStatus;
     }
 

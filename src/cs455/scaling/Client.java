@@ -11,6 +11,9 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
+
+import cs455.scaling.ClientReceiverThread;
+
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
@@ -56,6 +59,9 @@ public class Client {
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
+		ClientReceiverThread crt = new ClientReceiverThread(client, this);
+		crt.start();
+
 		while (true) {
 		
 			HashMessage nextMessage = new HashMessage();
@@ -65,30 +71,11 @@ public class Client {
 			System.out.println("Expecting: " + hashedMessageString.substring(0,5));
 		
 			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
-			System.out.println("Message to send is " + unhashedMessageBytes.length + " bytes long");
-			// readBuffer = ByteBuffer.allocate(hashedMessageString.getBytes().length);
-			readBuffer = ByteBuffer.allocate(Constants.KB * 8);
-
 			try{
 				client.write(writeBuffer);
 				incrementTotalSent();
-				unverifiedHashes.add(hashedMessageString);
+				addToUnverifiedHashes(hashedMessageString);
 				writeBuffer.clear();
-				client.read(readBuffer);
-				incrementTotalReceived();
-				byte[] response = readBuffer.array();
-				String responseString = new String(response);
-				responseString = responseString.substring(0,40); // Trim excess padded zeros off of string
-				boolean verified = false;
-				if (unverifiedHashes.contains(responseString)) {
-					verified = true;
-					unverifiedHashes.remove(responseString);
-				}
-				System.out.println("Response from server: " + responseString.substring(0,5));
-				System.out.println("Response valid?: " + verified);
-				System.out.println("Length expected: " + hashedMessageString.length() + " actual: " + responseString.length());
-
-				readBuffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
 			catch (IOException | InterruptedException e) {
@@ -96,6 +83,14 @@ public class Client {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public synchronized LinkedList<String> getUnverifiedHashes(){
+		return unverifiedHashes;
+	}
+
+	public synchronized void addToUnverifiedHashes(String newHash){
+		unverifiedHashes.add(newHash);
 	}
 
 	public synchronized void incrementTotalSent(){
