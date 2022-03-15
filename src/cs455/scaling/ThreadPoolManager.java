@@ -77,20 +77,13 @@ public class ThreadPoolManager extends Thread{
 	} 
 
 	public void addTask(SelectionKey key){
-		// System.out.println("Batch size status: " + getPendingTasks().size() + " / " + batchSize);
-		while (true){
-			// System.out.println("Trying to add key, current size is " + getPendingTasks().size() + " / " + batchSize);
-			if (getPendingTasks().contains(key)){
-				break;
-			}
-			if (addKey(key) == true){
-				break;
+		boolean keyGotInserted = false;
+		while (keyGotInserted == false){
+			if (pendingTasks.offerLast(key) == true){
+				// System.out.println("Added new key");
+				keyGotInserted = true;
 			}
 		}
-	}
-
-	public synchronized boolean addKey(SelectionKey key){
-		return pendingTasks.offerLast(key);
 	}
 
 	public synchronized int getTotalSent(){
@@ -121,19 +114,12 @@ public class ThreadPoolManager extends Thread{
 		++totalMessagesSent;
 	}
 
-	public synchronized BlockingQueue<SelectionKey> getPendingTasks(){
-		return pendingTasks;
-	}
-
-
-
 	public void checkForNewKeys(){
 
+
 		while (true){
-			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
-			if (batchLoad == batchSize || batchReady == true){
-				System.out.println("\tBatch ready @ " + pendingTasks.size() + "out of " + batchSize);
+			if (this.pendingTasks.size() == batchSize || batchReady == true){
 				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
 					for(SelectionKey key : pendingTasks){
 						// System.out.println("There are this many keys waiting to be taken from the queue: " + pendingTasks.size());
@@ -141,12 +127,12 @@ public class ThreadPoolManager extends Thread{
 						if (nextWorker != null){
 							++totalNumTasks;
 							nextWorker.setNextKey(key);
+							nextWorker.setWorkingStatus();
 							nextWorker.notifyWorker(totalNumTasks);
 							pendingTasks.remove(key);
 						}
 					}
 				}
-				batchTimer.setBatchReady(false);
 			}
 		}
 	}
