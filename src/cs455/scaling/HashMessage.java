@@ -36,6 +36,15 @@ public class HashMessage {
 		return hashedString;
 	}
 
+	public String bytesToString(byte[] inputBytes){
+		String byteString = "";
+		for (byte b: inputBytes){
+			byteString += b;
+		}
+		return byteString;
+
+	}
+
 	public String SHA1FromBytes(byte[] data) {
 		try{
 			MessageDigest digest = MessageDigest.getInstance("SHA1"); 
