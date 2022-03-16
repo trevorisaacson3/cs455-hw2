@@ -11,9 +11,6 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
-
-import cs455.scaling.ClientReceiverThread;
-
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
@@ -34,12 +31,12 @@ public class Client {
 	public int serverPort = -1;
 	int messageRate = -1;
 
-	LinkedList<String> unverifiedHashes = new LinkedList<String>();
+	public volatile LinkedList<String> unverifiedHashes = new LinkedList<String>();
 	
 	public Client (){};
 	
 	public Client (String serverHost, int serverPort, int messageRate){
-		AutomaticExit ae = new AutomaticExit(1);
+		AutomaticExit ae = new AutomaticExit(9999);
 		ae.start();
 
 		this.serverHost = serverHost;
@@ -67,30 +64,32 @@ public class Client {
 			HashMessage nextMessage = new HashMessage();
 			byte[] unhashedMessageBytes = nextMessage.getByteArray();
 			String hashedMessageString = nextMessage.getHashedString();
-			System.out.println("Sent: " + nextMessage.bytesToString(unhashedMessageBytes).substring(0,5));
-			System.out.println("Expecting: " + hashedMessageString.substring(0,5));
 		
 			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
 			try{
+				addToUnverifiedHashes(hashedMessageString);
 				client.write(writeBuffer);
 				incrementTotalSent();
-				addToUnverifiedHashes(hashedMessageString);
 				writeBuffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
-			catch (IOException | InterruptedException e) {
+			catch (IOException | InterruptedException | NullPointerException e) {
 				System.out.println("Disconnected from SocketChannel, did the server close?");
-				e.printStackTrace();
+				System.exit(1);
 			}
 		}
 	}
 
-	public synchronized LinkedList<String> getUnverifiedHashes(){
-		return unverifiedHashes;
+	public LinkedList<String> getUnverifiedHashes(){
+		synchronized(this){
+			return unverifiedHashes;
+		}
 	}
 
-	public synchronized void addToUnverifiedHashes(String newHash){
-		unverifiedHashes.add(newHash);
+	public void addToUnverifiedHashes(String newHash){
+		synchronized (this){
+			unverifiedHashes.add(newHash);
+		}
 	}
 
 	public synchronized void incrementTotalSent(){
@@ -103,6 +102,14 @@ public class Client {
 
 	public synchronized int getTotalSent(){
 		return totalSentCount;
+	}
+
+	public synchronized void resetTotalSent(){
+		this.totalSentCount = 0;
+	}
+
+	public synchronized void resetTotalReceived(){
+		this.totalReceivedCount = 0;
 	}
 
 	public synchronized int getTotalReceived(){

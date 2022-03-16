@@ -39,17 +39,11 @@ public class PrintStatsThread extends Thread{
         }
        
         double arrayLength = (double) inputArray.length;
-        // System.out.println("Array is this long: " + arrayLength);
         double arrayMean = arraySum/arrayLength;
-        // System.out.println("Array has mean: " + arrayMean);
 
         for(Object nextNum: inputArray) {
             stdDev += Math.pow((double)nextNum - arrayMean, 2);
         }
-        // System.out.println("stdDev is : " + stdDev);
-        // double insideParams = stdDev/arrayLength;
-        // System.out.println("stdDev is : " + insideParams);
-
         return Math.sqrt(stdDev/arrayLength);
     }
 
@@ -58,12 +52,11 @@ public class PrintStatsThread extends Thread{
 
         if (nodeType == type.CLIENT) {
             try {
-//                Date date = new Date();
                 while (true) {
-                    //	long currentTime = date.getTime();
                     LocalDateTime currentTime = LocalDateTime.now();
-//                int totalSent = client.getTotalSent();
                     System.out.println("[" + currentTime + "] Total Sent Count: " + client.getTotalSent() + ", Total Received Count: " + client.getTotalReceived());
+                    client.resetTotalReceived();
+                    client.resetTotalSent();
                     Thread.sleep(20000);
                 }
             } catch (Exception e) {
@@ -73,26 +66,24 @@ public class PrintStatsThread extends Thread{
 
         if (nodeType == type.TPM) {
             try {
-//                Date date = new Date();
                 while (true) {
-                    //	long currentTime = date.getTime();
                     LocalDateTime currentTime = LocalDateTime.now();
                     Instant endTime = Instant.now();
                     long preciseDuration = (Duration.between(startTime, endTime).toMillis()) / 1000; // converting per millisecond unit rate to per second rate (1000ms = 1s) 
                     preciseDuration = preciseDuration == 0 ? 1 : preciseDuration; // Prevent divide by zero error if the program just started and the timer hasn't started yet
                     double averageSent = (double)(tpm.getTotalSent()) / (double) preciseDuration;
-                    // System.out.println("(long)(tpm.getTotalSent()) " + (long)(tpm.getTotalSent()));
+                    // double averageSent = (double)tpm.getTotalSent();
                     long numNodesConnected = (long) tpm.getNumNodesConnected() == 0 ? 1 : (long) tpm.getNumNodesConnected(); // Prevent divide by zero error if the program just started and no nodes have connected yet
                     double meanPerClientTP = averageSent / (double) numNodesConnected;
                     throughPutAverages.add(meanPerClientTP);
                     Object[] tpaArray = throughPutAverages.toArray();
-                    // avgStats.accept(meanPerClientTP);
                     double stdDev = getStandardDev(tpaArray);
                     DecimalFormat df = new DecimalFormat ("#.000");
                     df.format(stdDev);
                     df.format(meanPerClientTP);
-                    // System.out.println("Duration is " + preciseDuration);
                     System.out.println("[" + currentTime + "] Server Throughput: " + averageSent + " messages/s, Active Client Connections: " + tpm.getNumNodesConnected() + ", Mean Per-client Throughput: " + meanPerClientTP + " messages/s, Std. Dev. Of Per-client Throughput: " + stdDev + " messages/s");
+                    this.tpm.resetTotalSent();
+                    this.startTime = Instant.now();
                     Thread.sleep(20000);
                 }
             } catch (Exception e) {
