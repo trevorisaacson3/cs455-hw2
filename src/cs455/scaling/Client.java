@@ -11,9 +11,6 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
-
-import cs455.scaling.ClientReceiverThread;
-
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
@@ -39,7 +36,7 @@ public class Client {
 	public Client (){};
 	
 	public Client (String serverHost, int serverPort, int messageRate){
-		AutomaticExit ae = new AutomaticExit(1);
+		AutomaticExit ae = new AutomaticExit(3);
 		ae.start();
 
 		this.serverHost = serverHost;
@@ -67,8 +64,8 @@ public class Client {
 			HashMessage nextMessage = new HashMessage();
 			byte[] unhashedMessageBytes = nextMessage.getByteArray();
 			String hashedMessageString = nextMessage.getHashedString();
-			System.out.println("Sent: " + nextMessage.bytesToString(unhashedMessageBytes).substring(0,5));
-			System.out.println("Expecting: " + hashedMessageString.substring(0,5));
+			// System.out.println("Sent: " + nextMessage.bytesToString(unhashedMessageBytes).substring(0,5));
+			// System.out.println("Expecting: " + hashedMessageString.substring(0,5));
 		
 			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
 			try{
@@ -78,9 +75,10 @@ public class Client {
 				writeBuffer.clear();
 				Thread.sleep(1000 / messageRate);
 			}
-			catch (IOException | InterruptedException e) {
+			catch (IOException | InterruptedException | NullPointerException e) {
 				System.out.println("Disconnected from SocketChannel, did the server close?");
-				e.printStackTrace();
+				System.exit(1);
+				// e.printStackTrace();
 			}
 		}
 	}

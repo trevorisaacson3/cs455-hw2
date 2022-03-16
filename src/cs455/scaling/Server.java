@@ -16,7 +16,7 @@ public class Server {
 	public static void main(String[] args) throws IOException {
 	
 		if (args.length == 4){
-			AutomaticExit ae = new AutomaticExit(1);
+			AutomaticExit ae = new AutomaticExit(3);
 			ae.start();
 			// First argument is portnum
 			int portnum = Integer.parseInt(args[0]);

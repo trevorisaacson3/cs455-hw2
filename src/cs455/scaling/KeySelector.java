@@ -24,8 +24,10 @@ public class KeySelector extends Thread{
 
     private static ThreadPoolManager tpm;
     private int portnum = -1;
-	public static ServerSocketChannel serverSocket;
+	public ServerSocketChannel serverSocketChannel;
+	// public static Socket
 	public static Selector selector;
+	public static int numRegisteredKeys = 0;
 
     public KeySelector(ThreadPoolManager tpm, int portnum){
         this.tpm = tpm;
@@ -37,20 +39,30 @@ public class KeySelector extends Thread{
 		readKeys();
 	}
 
+	public synchronized static int getNumRegisteredKeys(){
+		return numRegisteredKeys;
+	}
+
+	public synchronized static void incrementNumRegisteredKeys(){
+		++numRegisteredKeys;
+	}
+
 	private synchronized void readKeys(){
 		try {
 
 			selector = Selector.open();
-			serverSocket = ServerSocketChannel.open();
-			serverSocket.bind(new InetSocketAddress(portnum));
-			serverSocket.configureBlocking(false);
+			serverSocketChannel = ServerSocketChannel.open();
+			serverSocketChannel.bind(new InetSocketAddress(portnum));
+			serverSocketChannel.configureBlocking(false);
 
-			serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+			serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
 			HashSet<SelectionKey> registeredKeys = new HashSet<SelectionKey>();
 			while (true) {
 				selector.select();
 				Set<SelectionKey> selectedKeys = selector.selectedKeys();
+				// System.out.println("Current number of keys is :" + selectedKeys.size() + " registered:" + getNumRegisteredKeys());
+				// Thread.sleep(400);
 				Iterator<SelectionKey> iter = selectedKeys.iterator();
 				while (iter.hasNext()) {
 
@@ -59,8 +71,13 @@ public class KeySelector extends Thread{
 					if (key.isValid() == false) {
 						continue;
 					}
-
+					
+					// System.out.println("\t\t key.isAcceptable()? :" + key.isAcceptable() + " !registeredKeys.contains(key)? : " + !registeredKeys.contains(key) + " Key ops? : " + key.readyOps());
 					if (key.isAcceptable()) {
+					// if (key.isAcceptable() && getNumRegisteredKeys() != selectedKeys.size()) {
+					// if (key.isAcceptable() && !registeredKeys.contains(key)) {
+						registeredKeys.add(key);
+						// System.out.println("\t\t Number of registered keys is :" + registeredKeys.size());
 						key.attach(this);
 						//Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
@@ -76,22 +93,27 @@ public class KeySelector extends Thread{
 				}
 			}
 		}
-		catch (IOException e){
+		catch (Exception e){
 			e.printStackTrace();
 		}
 
 	}
 
 	// OLD WAY OF REGISTERING NODES, this one uses blocking synchronization though, if new version of this method in WorkerThread.java breaks use this code for reference
-	// public static void register(ServerSocketChannel ssc) throws IOException {
-		// System.out.println("Trying to register a key");
-		// SocketChannel client = serverSocket.accept();
-		// client.configureBlocking(false);
-		// client.register(selector, SelectionKey.OP_CONNECT);
-		// client.register(selector, SelectionKey.OP_READ);
-		// tpm.incrementNodesConnected();
-		// System.out.println("\t\tNew client registered using selector");
-		// notify();
+	// public void register() throws IOException {
+	// 	System.out.println("Trying to register a key");
+	// 	SocketChannel client = null;
+	// 	while (client == null){
+	// 		client = serverSocketChannel.accept();
+	// 		System.out.println("\t\tclient waiting to register");
+	// 	}
+	// 	// System.exit(1);
+	// 	// SocketChannel client = serverSocketChannel.accept();
+	// 	client.configureBlocking(false);
+	// 	// client.register(selector, SelectionKey.OP_CONNECT);
+	// 	client.register(selector, SelectionKey.OP_READ);
+	// 	tpm.incrementNodesConnected();
+	// 	System.out.println("\t\tNew client registered using selector");
 	// }
 
 }

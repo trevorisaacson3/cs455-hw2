@@ -36,10 +36,10 @@ public class ClientReceiverThread extends Thread{
     public void run(){
         while(true){
             try{
-				System.out.println("Waiting for a received message");
+				// System.out.println("Waiting for a received message");
             	clientChannel.read(readBuffer);
-				System.out.println("\t\t** Received a message back!");
-				client.incrementTotalReceived();
+				// System.out.println("\t\t** Received a message back!");
+				// client.incrementTotalReceived();
 				byte[] response = readBuffer.array();
 				String responseString = new String(response);
 				responseString = responseString.substring(0,40); // Trim excess padded zeros off of string
@@ -48,15 +48,21 @@ public class ClientReceiverThread extends Thread{
 				if (unverifiedHashes.contains(responseString)) {
 					verified = true;
 					unverifiedHashes.remove(responseString);
+					client.incrementTotalReceived();
 				}
-				System.out.println("Response from server: " + responseString.substring(0,5));
-				System.out.println("Response valid?: " + verified);
+				else {
+					System.out.println("\tReceived an unverified string!");
+				}
+				// System.out.println("Response from server: " + responseString.substring(0,5));
+				// System.out.println("Response valid?: " + verified);
 				// System.out.println("Length expected: " + hashedMessageString.length() + " actual: " + responseString.length());
 
 				readBuffer.clear();
             }
             catch (IOException e){
-                e.printStackTrace();
+				System.out.println("Server has finished sending messages.");
+				System.exit(0);
+                // e.printStackTrace();
             }
         }
     }

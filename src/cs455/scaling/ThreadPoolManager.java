@@ -7,6 +7,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Iterator;
+// import java.util.Vector;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
@@ -39,7 +40,7 @@ public class ThreadPoolManager extends Thread{
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
-	protected static LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+	protected LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
@@ -47,6 +48,8 @@ public class ThreadPoolManager extends Thread{
 
 	//Used for debugging purposes to keep track of the number of tasks generated variables (DELETE WHEN NO LONGER NEEDED)
 	int totalNumTasks = 0;
+
+	// Vector<SelectionKey> everyKeyEver = new Vector<SelectionKey>(1000);
 
 	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
 		this.numThreads = numThreads;
@@ -78,15 +81,24 @@ public class ThreadPoolManager extends Thread{
 
 	public void addTask(SelectionKey key){
 		// System.out.println("Batch size status: " + getPendingTasks().size() + " / " + batchSize);
-		while (true){
+		// while (true){
 			// System.out.println("Trying to add key, current size is " + getPendingTasks().size() + " / " + batchSize);
-			if (getPendingTasks().contains(key)){
-				break;
-			}
-			if (addKey(key) == true){
-				break;
-			}
-		}
+			// System.out.println("Trying to add key, I currently know of this many registry keys ->" + everyKeyEver.size() + "Conditions 1/2/3 : " + !getPendingTasks().contains(key) + "/" + !everyKeyEver.contains(key) + "/" + key.isAcceptable());
+			if (!getPendingTasks().contains(key)){
+				// if (!everyKeyEver.contains(key) && key.isAcceptable()){
+					// addKey(key);
+					// everyKeyEver.add(key);
+				// }
+				// else if (!key.isAcceptable()){
+					addKey(key);
+				}
+				// addKey(key);
+				// break;
+			// }
+			// if (addKey(key) == true){
+				// break;
+			// }
+		// }
 	}
 
 	public synchronized boolean addKey(SelectionKey key){
@@ -125,15 +137,22 @@ public class ThreadPoolManager extends Thread{
 		return pendingTasks;
 	}
 
-
+	private boolean pendingTasksContainsRegistry(){
+		for (SelectionKey sk: pendingTasks){
+			if (sk.isAcceptable()){
+				return true;
+			}
+		}
+		return false;
+	}
 
 	public void checkForNewKeys(){
-
 		while (true){
 			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
-			if (batchLoad == batchSize || batchReady == true){
-				System.out.println("\tBatch ready @ " + pendingTasks.size() + "out of " + batchSize);
+			boolean batchContainsRegistry = pendingTasksContainsRegistry();
+			if (batchLoad == batchSize || batchReady == true || pendingTasksContainsRegistry()){
+				// System.out.println("\tBatch ready @ " + pendingTasks.size() + "out of " + batchSize);
 				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
 					for(SelectionKey key : pendingTasks){
 						// System.out.println("There are this many keys waiting to be taken from the queue: " + pendingTasks.size());
@@ -141,7 +160,8 @@ public class ThreadPoolManager extends Thread{
 						if (nextWorker != null){
 							++totalNumTasks;
 							nextWorker.setNextKey(key);
-							nextWorker.notifyWorker(totalNumTasks);
+							nextWorker.notifyWorker(getPendingTasks().remainingCapacity());
+							// nextWorker.notifyWorker(totalNumTasks);
 							pendingTasks.remove(key);
 						}
 					}
@@ -155,6 +175,7 @@ public class ThreadPoolManager extends Thread{
 		while (true){
 			for (WorkerThread wt : allWorkerThreads){
 				if (wt.isAvailable()){
+					wt.setAvailability(false);
 					return wt;
 				}
 			}	
