@@ -7,20 +7,25 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.SynchronousQueue;
+import java.time.LocalDateTime;
+
 
 public class KeySelector extends Thread{
 
-    private ThreadPoolManager tpm;
+    private static ThreadPoolManager tpm;
     private int portnum = -1;
 	public static ServerSocketChannel serverSocket;
-	public Selector selector;
+	public static Selector selector;
 
     public KeySelector(ThreadPoolManager tpm, int portnum){
         this.tpm = tpm;
@@ -48,31 +53,22 @@ public class KeySelector extends Thread{
 				Set<SelectionKey> selectedKeys = selector.selectedKeys();
 				Iterator<SelectionKey> iter = selectedKeys.iterator();
 				while (iter.hasNext()) {
+
 					SelectionKey key = iter.next();
-					// System.out.println("KeyOPS is" + key.interestOps());
 					
 					if (key.isValid() == false) {
 						continue;
 					}
 
-					else if (key.isAcceptable() && !(registeredKeys.contains(key))) {
-						registeredKeys.add(key);
-						// System.out.println("NEW REGISTER KEY");
+					if (key.isAcceptable()) {
 						key.attach(this);
+						//Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
-						try{
-							wait();
-						}
-						catch(InterruptedException e){
-							e.printStackTrace();
-						}
 					}
 
-					else if (key.isReadable()) {
-						// System.out.println("NEW RESPOND KEY, Iteration #" + numIters);
+					if (key.isReadable()) {
 						//Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
-						key.channel().register(selector, SelectionKey.OP_WRITE);
 					}
 
 					// Remove from the set when done
@@ -86,15 +82,16 @@ public class KeySelector extends Thread{
 
 	}
 
-
-	public synchronized void register() throws IOException {
-		System.out.println("Trying to register a key");
-		SocketChannel client = serverSocket.accept();
-		client.configureBlocking(false);
-		client.register(selector, SelectionKey.OP_READ);
-		this.tpm.incrementNodesConnected();
-		System.out.println("\t\tNew client registered using selector");
-		notify();
-	}
+	// OLD WAY OF REGISTERING NODES, this one uses blocking synchronization though, if new version of this method in WorkerThread.java breaks use this code for reference
+	// public static void register(ServerSocketChannel ssc) throws IOException {
+		// System.out.println("Trying to register a key");
+		// SocketChannel client = serverSocket.accept();
+		// client.configureBlocking(false);
+		// client.register(selector, SelectionKey.OP_CONNECT);
+		// client.register(selector, SelectionKey.OP_READ);
+		// tpm.incrementNodesConnected();
+		// System.out.println("\t\tNew client registered using selector");
+		// notify();
+	// }
 
 }
