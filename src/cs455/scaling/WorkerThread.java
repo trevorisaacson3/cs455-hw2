@@ -9,10 +9,6 @@ import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.SynchronousQueue;
 
 public class WorkerThread extends Thread{
 
@@ -20,7 +16,6 @@ public class WorkerThread extends Thread{
     private static ThreadPoolManager tpm;
     private SelectionKey nextKey = null;
     public int workerID = -1;
-    private int keyNumber = -1;
 
     public WorkerThread(int workerID, ThreadPoolManager tpm){
         this.workerID = workerID;
@@ -35,8 +30,7 @@ public class WorkerThread extends Thread{
         isAvailable = inputAvailability;
     }
 
-    public synchronized void notifyWorker(int keyNumber){
-            this.keyNumber = keyNumber;
+    public synchronized void notifyWorker(){
             notify();
     }
 
@@ -156,7 +150,6 @@ public class WorkerThread extends Thread{
             completeNextTask();
             // Set key as null to prevent accidentally working on the same key twice; 
             this.nextKey = null;
-            this.keyNumber = -1;
         }
     }
 }

@@ -1,6 +1,4 @@
 package cs455.scaling;
-import java.util.concurrent.SynchronousQueue;
-
 
 public class AutomaticExit extends Thread{
 

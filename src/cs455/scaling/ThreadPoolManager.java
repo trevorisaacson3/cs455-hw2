@@ -7,13 +7,8 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Iterator;
-// import java.util.Vector;
+import java.util.LinkedList;
 import java.util.Set;
-import java.util.concurrent.BlockingDeque;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.SynchronousQueue;
-
 
 public class ThreadPoolManager extends Thread{
 
@@ -40,7 +35,7 @@ public class ThreadPoolManager extends Thread{
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
-	protected static LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+	private static LinkedList<SelectionKey> pendingTasks = new LinkedList<SelectionKey>(); // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
@@ -55,7 +50,6 @@ public class ThreadPoolManager extends Thread{
 		this.batchSize = batchSize;
 		this.batchTime = batchTime;
 
-		this.pendingTasks = new LinkedBlockingDeque<>(batchSize);
 		batchTimer = new BatchTimer(batchTime);
 		batchTimer.start();
 		PrintStatsThread pst = new PrintStatsThread(this);
@@ -73,18 +67,22 @@ public class ThreadPoolManager extends Thread{
 		ks.start();
 	}
 
-	public synchronized LinkedBlockingDeque<SelectionKey> getTaskList(){
-		return pendingTasks;
+	public LinkedList<SelectionKey> getTaskList(){
+		synchronized (this){
+			return pendingTasks;
+		}
 	} 
 
 	public void addTask(SelectionKey key){
-			if (!getPendingTasks().contains(key)){
+			if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
 					addKey(key);
 				}
 	}
 
-	public synchronized boolean addKey(SelectionKey key){
-		return pendingTasks.offerLast(key);
+	public boolean addKey(SelectionKey key){
+		synchronized (this) {
+			return pendingTasks.add(key);
+		}
 	}
 
 	public synchronized int getTotalSent(){
@@ -119,17 +117,29 @@ public class ThreadPoolManager extends Thread{
 		++totalMessagesSent;
 	}
 
-	public synchronized BlockingQueue<SelectionKey> getPendingTasks(){
-		return pendingTasks;
+	public LinkedList<SelectionKey> getPendingTasks(){
+		synchronized (this){
+			return pendingTasks;
+		}
+	}
+
+	public void clearPendingTasks(){
+		synchronized(this){
+			pendingTasks.clear();
+		}
 	}
 
 	private boolean pendingTasksContainsRegistry(){
-		for (SelectionKey sk: pendingTasks){
-			if (sk.isAcceptable()){
-				return true;
+		synchronized (this){
+			if (pendingTasks.size() != 0){
+				for (SelectionKey sk: pendingTasks){
+					if (sk.isAcceptable()){
+						return true;
+					}
+				}
 			}
+			return false;
 		}
-		return false;
 	}
 
 	public void checkForNewKeys(){
@@ -138,15 +148,20 @@ public class ThreadPoolManager extends Thread{
 			boolean batchReady = batchTimer.getBatchReadyStatus();
 			boolean batchContainsRegistry = pendingTasksContainsRegistry();
 			if (batchLoad == batchSize || batchReady == true || pendingTasksContainsRegistry()){
-				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
-					for(SelectionKey key : pendingTasks){
-						WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
-						if (nextWorker != null){
-							++totalNumTasks;
-							nextWorker.setNextKey(key);
-							nextWorker.notifyWorker(getPendingTasks().remainingCapacity());
-							pendingTasks.remove(key);
+				while (getPendingTasks().size() != 0){ // Start assigning keys to threads until it's empty
+					synchronized(this){
+						LinkedList<SelectionKey> currentKeys = this.getPendingTasks();
+						Iterator<SelectionKey> keyIterator = currentKeys.iterator();
+						while (keyIterator.hasNext()){
+							SelectionKey key = keyIterator.next();
+							WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
+							if (nextWorker != null){
+								++totalNumTasks;
+								nextWorker.setNextKey(key);
+								nextWorker.notifyWorker();
+							}
 						}
+						clearPendingTasks();
 					}
 				}
 				batchTimer.setBatchReady(false);
