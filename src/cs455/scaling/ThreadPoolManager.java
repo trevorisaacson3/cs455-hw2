@@ -40,7 +40,7 @@ public class ThreadPoolManager extends Thread{
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
-	protected LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+	protected static LinkedBlockingDeque<SelectionKey> pendingTasks; // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
@@ -48,8 +48,6 @@ public class ThreadPoolManager extends Thread{
 
 	//Used for debugging purposes to keep track of the number of tasks generated variables (DELETE WHEN NO LONGER NEEDED)
 	int totalNumTasks = 0;
-
-	// Vector<SelectionKey> everyKeyEver = new Vector<SelectionKey>(1000);
 
 	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
 		this.numThreads = numThreads;
@@ -80,25 +78,9 @@ public class ThreadPoolManager extends Thread{
 	} 
 
 	public void addTask(SelectionKey key){
-		// System.out.println("Batch size status: " + getPendingTasks().size() + " / " + batchSize);
-		// while (true){
-			// System.out.println("Trying to add key, current size is " + getPendingTasks().size() + " / " + batchSize);
-			// System.out.println("Trying to add key, I currently know of this many registry keys ->" + everyKeyEver.size() + "Conditions 1/2/3 : " + !getPendingTasks().contains(key) + "/" + !everyKeyEver.contains(key) + "/" + key.isAcceptable());
 			if (!getPendingTasks().contains(key)){
-				// if (!everyKeyEver.contains(key) && key.isAcceptable()){
-					// addKey(key);
-					// everyKeyEver.add(key);
-				// }
-				// else if (!key.isAcceptable()){
 					addKey(key);
 				}
-				// addKey(key);
-				// break;
-			// }
-			// if (addKey(key) == true){
-				// break;
-			// }
-		// }
 	}
 
 	public synchronized boolean addKey(SelectionKey key){
@@ -109,6 +91,10 @@ public class ThreadPoolManager extends Thread{
 		return totalMessagesSent;
 	}
 
+	public synchronized void resetTotalSent(){
+		this.totalMessagesSent= 0;
+	}
+	
 	public synchronized int getTotalMessagesReceived(){
 		return totalMessagesReceived;
 	}
@@ -152,16 +138,13 @@ public class ThreadPoolManager extends Thread{
 			boolean batchReady = batchTimer.getBatchReadyStatus();
 			boolean batchContainsRegistry = pendingTasksContainsRegistry();
 			if (batchLoad == batchSize || batchReady == true || pendingTasksContainsRegistry()){
-				// System.out.println("\tBatch ready @ " + pendingTasks.size() + "out of " + batchSize);
 				while (this.pendingTasks.size() != 0){ // Start assigning keys to threads until it's empty
 					for(SelectionKey key : pendingTasks){
-						// System.out.println("There are this many keys waiting to be taken from the queue: " + pendingTasks.size());
 						WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
 						if (nextWorker != null){
 							++totalNumTasks;
 							nextWorker.setNextKey(key);
 							nextWorker.notifyWorker(getPendingTasks().remainingCapacity());
-							// nextWorker.notifyWorker(totalNumTasks);
 							pendingTasks.remove(key);
 						}
 					}

@@ -36,7 +36,6 @@ public class WorkerThread extends Thread{
     }
 
     public synchronized void notifyWorker(int keyNumber){
-            // System.out.println("Worker # " + workerID + " is working on key #" + keyNumber);
             this.keyNumber = keyNumber;
             notify();
     }
@@ -47,7 +46,6 @@ public class WorkerThread extends Thread{
                 try{
                     wait();
                     setAvailability(false);
-                    // System.out.println("Worker # " + workerID + " is now proceeding to work");
                 }
                 catch (InterruptedException e){
                     e.printStackTrace();
@@ -59,72 +57,44 @@ public class WorkerThread extends Thread{
     }
 
     private void completeNextTask(){
-        // System.out.println("Worker # " + workerID + "\t Starting Task");
         try{
-	        if (nextKey.isAcceptable()) {
-                // System.out.println("Worker # " + workerID + "\t Found register key");
-                KeySelector ks = (KeySelector) nextKey.attachment();
-                final ServerSocketChannel ssc = ks.serverSocketChannel;
-                boolean registerSuccess = registerKey(nextKey, ssc);
-                if (registerSuccess) {
-                    ks.incrementNumRegisteredKeys();
+            if (nextKey != null && nextKey.isValid()){
+                if (nextKey.isAcceptable()) {
+                    KeySelector ks = (KeySelector) nextKey.attachment();
+                    final ServerSocketChannel ssc = ks.serverSocketChannel;
+                    boolean registerSuccess = registerKey(nextKey, ssc);
+                    if (registerSuccess) {
+                        ks.incrementNumRegisteredKeys();
+                    }
                 }
-                // ks.register();
+        
+                else if (nextKey.isReadable() | nextKey.isWritable()) {
+                    this.readAndRespond(nextKey, workerID);
+                } 
             }
-    
-            else if (nextKey.isReadable() | nextKey.isWritable()) {
-                // System.out.println("Worker # " + workerID + "\t Found read/writable key");
-                this.readAndRespond(nextKey, workerID);
-            }
-            else {
-                // System.out.println("Worker # " + workerID + "\t FOUND UNKNOWN TYPE OF KEY");
-                // System.out.println("\t###############################################");
-
-
+            else{
+                return;
             }
         }
         catch (IOException e){
             e.printStackTrace();
         }
-        // System.out.println("Worker # " + workerID + "\t Finished task.");
     }
 
 
 	public boolean registerKey(SelectionKey key, ServerSocketChannel ssc) throws IOException {
-		// System.out.println("Trying to register a key");
         SocketChannel client = null;
         int whileCounter = 0;
         client = ssc.accept();
         if (client == null){
-        System.out.println("Worker # " + workerID + " is waiting on key #" + keyNumber);
-        System.out.println("Worker # " + workerID + " is waiting on key #" + keyNumber);
-        System.out.println("Worker # " + workerID + " is waiting on key #" + keyNumber);
-        System.out.println("Worker # " + workerID + " is waiting on key #" + keyNumber);
             return false;
         }
-        // while (client == null){
-		// 	client = ssc.accept();
-        //     if (whileCounter == 40){
-        //         return;
-        //     }
-        //     try{
-        //         Thread.sleep(100);
-        //         System.out.println("Worker # " + workerID + " is waiting on key #" + keyNumber);
-        //         ++whileCounter;
-        //     }
-        //     catch(InterruptedException e){
-
-        //     }
-			// System.out.println("\t\tclient waiting to register");
-            // System.exit(1)
-		// }
-		// SocketChannel client = ssc.accept();
 		client.configureBlocking(false);
         Selector keySelector = key.selector();
 		client.register(keySelector, SelectionKey.OP_READ);
+        key.selector().wakeup();
 		tpm.incrementNodesConnected();
         return true;
-		// System.out.println("\t\tNew client registered using WT selector");
 	}
 
 
@@ -136,12 +106,11 @@ public class WorkerThread extends Thread{
 			    if (bytesRead == -1){
                     tpm.decrementNodesConnected();
 				    client.close();
-				    // System.out.println("Client has disconnected **FROM WORKERTHREAD #" + workerID);
+                    return;
 			    }
 			    else {            
 				    byte[] receivedByteArray = readBuffer.array();
 				    HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
-				    // System.out.println("WorkerThread # " + workerID  + "\treceived: " + receivedHashMessage.bytesToString(receivedByteArray).substring(0,5) + " size: " + receivedByteArray.length + " <- (8192) (bytes)?");
                     boolean allZeros = true;
                     for (byte b : receivedByteArray){ //Check to make sure buffer is not just zeros
                         if (b != 0){
@@ -155,10 +124,18 @@ public class WorkerThread extends Thread{
                     tpm.incrementTotalReceived();
     				String hashedMessageString = receivedHashMessage.getHashedString();
     				readBuffer.clear();
-    				ByteBuffer writeBuffer = ByteBuffer.allocate(Constants.KB * 8);
-    				writeBuffer = ByteBuffer.wrap(hashedMessageString.getBytes());
+                    byte[] messageBytes = hashedMessageString.getBytes();
+    				ByteBuffer writeBuffer = ByteBuffer.allocate(8 * Constants.KB);
+                    String responseLength = messageBytes.length + "";
+                    byte lChar_one = (byte) responseLength.charAt(0);
+                    byte lChar_two = (byte) responseLength.charAt(1);
+                    byte [] lengthArray = {lChar_one,lChar_two};
+                    byte[] responseBytes =new byte[2 + messageBytes.length];
+                    System.arraycopy(lengthArray, 0, responseBytes, 0, 2);
+                    System.arraycopy(messageBytes, 0, responseBytes, 2, messageBytes.length);
+
+    				writeBuffer = ByteBuffer.wrap(responseBytes);
                     int sentSize = writeBuffer.array().length;
-    				// System.out.println("WorkerThread # " + workerID  + "\tsent back: " + hashedMessageString.substring(0,5) + " size: " + (sentSize) + " <- (40) (chars)?");
     				client.write(writeBuffer);
     				writeBuffer.clear();
                     tpm.incrementTotalSent();

@@ -25,7 +25,6 @@ public class KeySelector extends Thread{
     private static ThreadPoolManager tpm;
     private int portnum = -1;
 	public ServerSocketChannel serverSocketChannel;
-	// public static Socket
 	public static Selector selector;
 	public static int numRegisteredKeys = 0;
 
@@ -61,8 +60,6 @@ public class KeySelector extends Thread{
 			while (true) {
 				selector.select();
 				Set<SelectionKey> selectedKeys = selector.selectedKeys();
-				// System.out.println("Current number of keys is :" + selectedKeys.size() + " registered:" + getNumRegisteredKeys());
-				// Thread.sleep(400);
 				Iterator<SelectionKey> iter = selectedKeys.iterator();
 				while (iter.hasNext()) {
 
@@ -72,19 +69,14 @@ public class KeySelector extends Thread{
 						continue;
 					}
 					
-					// System.out.println("\t\t key.isAcceptable()? :" + key.isAcceptable() + " !registeredKeys.contains(key)? : " + !registeredKeys.contains(key) + " Key ops? : " + key.readyOps());
 					if (key.isAcceptable()) {
-					// if (key.isAcceptable() && getNumRegisteredKeys() != selectedKeys.size()) {
-					// if (key.isAcceptable() && !registeredKeys.contains(key)) {
-						registeredKeys.add(key);
-						// System.out.println("\t\t Number of registered keys is :" + registeredKeys.size());
 						key.attach(this);
-						//Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
+						// Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
 					}
 
 					if (key.isReadable()) {
-						//Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
+						// Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						tpm.addTask(key);
 					}
 
@@ -98,22 +90,5 @@ public class KeySelector extends Thread{
 		}
 
 	}
-
-	// OLD WAY OF REGISTERING NODES, this one uses blocking synchronization though, if new version of this method in WorkerThread.java breaks use this code for reference
-	// public void register() throws IOException {
-	// 	System.out.println("Trying to register a key");
-	// 	SocketChannel client = null;
-	// 	while (client == null){
-	// 		client = serverSocketChannel.accept();
-	// 		System.out.println("\t\tclient waiting to register");
-	// 	}
-	// 	// System.exit(1);
-	// 	// SocketChannel client = serverSocketChannel.accept();
-	// 	client.configureBlocking(false);
-	// 	// client.register(selector, SelectionKey.OP_CONNECT);
-	// 	client.register(selector, SelectionKey.OP_READ);
-	// 	tpm.incrementNodesConnected();
-	// 	System.out.println("\t\tNew client registered using selector");
-	// }
 
 }

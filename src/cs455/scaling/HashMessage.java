@@ -13,19 +13,16 @@ public class HashMessage {
 		Random rand = new Random();
 		rand.nextBytes(randomBytes);
 		hashedString = SHA1FromBytes(randomBytes);
-		//System.out.println("Generated new random byte array: " + randomBytes + ", with hashString: " + hashedString);
 	}
 
 	public HashMessage(byte[] randomBytes){
 		this.randomBytes = randomBytes;
 		hashedString = SHA1FromBytes(randomBytes);
-		//System.out.println("Used byte array: " + randomBytes + ", to generate hashString: " + hashedString);
 	}
 
 	public HashMessage(String unHashedString){
 		this.randomBytes = unHashedString.getBytes();
 		hashedString = SHA1FromBytes(randomBytes);
-		//System.out.println("Used String: " + unHashedString + ", to generate hashString: " + hashedString);
 	}
 
 	public byte[] getByteArray(){

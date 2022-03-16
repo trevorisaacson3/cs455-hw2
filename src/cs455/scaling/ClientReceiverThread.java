@@ -36,33 +36,39 @@ public class ClientReceiverThread extends Thread{
     public void run(){
         while(true){
             try{
-				// System.out.println("Waiting for a received message");
             	clientChannel.read(readBuffer);
-				// System.out.println("\t\t** Received a message back!");
-				// client.incrementTotalReceived();
 				byte[] response = readBuffer.array();
 				String responseString = new String(response);
-				responseString = responseString.substring(0,40); // Trim excess padded zeros off of string
+				int messageLength = Integer.parseInt(responseString.substring(0,2));
+				String messageString = responseString.substring(2,2+messageLength); // Trim excess padded zeros off of string
 				boolean verified = false;
                 LinkedList<String> unverifiedHashes = client.getUnverifiedHashes();
-				if (unverifiedHashes.contains(responseString)) {
+
+				String partOfRS = responseString.substring(2,12);
+
+				if (unverifiedHashes.contains(messageString)) {
 					verified = true;
-					unverifiedHashes.remove(responseString);
+					unverifiedHashes.remove(messageString);
 					client.incrementTotalReceived();
 				}
 				else {
-					System.out.println("\tReceived an unverified string!");
+					// System.out.println("\tReceived an unverified string!");
+					// System.out.println("\tUnverified string: " + messageString + " length: " + messageString.length());
+					// System.out.println("\tSize of list of hashes: " + client.getUnverifiedHashes().size());
+					for (String hashString: client.getUnverifiedHashes()){
+						String partOfNH = hashString.substring(0,10);
+						if (partOfRS == partOfNH){
+							// System.out.println("Found a match, size in response: " + responseString.length() + ", size in hash list: "+ hashString.length());
+						}
+					}
+
 				}
-				// System.out.println("Response from server: " + responseString.substring(0,5));
-				// System.out.println("Response valid?: " + verified);
-				// System.out.println("Length expected: " + hashedMessageString.length() + " actual: " + responseString.length());
 
 				readBuffer.clear();
             }
             catch (IOException e){
 				System.out.println("Server has finished sending messages.");
 				System.exit(0);
-                // e.printStackTrace();
             }
         }
     }
