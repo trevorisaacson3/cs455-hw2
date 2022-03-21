@@ -1,5 +1,6 @@
 package cs455.scaling;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
@@ -33,7 +34,7 @@ public class Client {
 	public int serverPort = -1;
 	int messageRate = -1;
 
-	public volatile LinkedList<String> unverifiedHashes = new LinkedList<String>();
+	public LinkedList<String> unverifiedHashes = new LinkedList<String>();
 	
 	public Client (){};
 	
@@ -48,27 +49,28 @@ public class Client {
 	}
 
 
-	private boolean tryConnection(){
-		try {
-			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
-			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
-			writeBuffer = ByteBuffer.allocate(8*Constants.KB);
-			return true;
+	private void tryConnection(){
+		while (true){
+			try {
+				System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
+				client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));	
+				writeBuffer = ByteBuffer.allocate(8*Constants.KB);
+				if (client.isConnected()){
+					return;
+				}
+			}		
+			catch (IOException e) {		
+				// e.printStackTrace();
+				System.err.println("Connection to server timed out, retrying...");
+			}
 		}
-		catch (IOException e) {
-			e.printStackTrace();
-		}
-		return false;
-
 	}
 
 	public void initialize(){
 
-		boolean connectionSuccessful = false; 
-		while (connectionSuccessful == false){
-			connectionSuccessful = tryConnection();
-		}
-		
+		tryConnection();
+		System.out.println("Connected to the server.");
+				
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
@@ -96,16 +98,12 @@ public class Client {
 		}
 	}
 
-	public LinkedList<String> getUnverifiedHashes(){
-		synchronized(this){
+	public synchronized LinkedList<String> getUnverifiedHashes(){
 			return unverifiedHashes;
-		}
 	}
 
-	public void addToUnverifiedHashes(String newHash){
-		synchronized (this){
+	public synchronized void addToUnverifiedHashes(String newHash){
 			unverifiedHashes.add(newHash);
-		}
 	}
 
 	public void incrementTotalSent(){
