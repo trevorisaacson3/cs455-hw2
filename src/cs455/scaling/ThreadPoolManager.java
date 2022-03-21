@@ -74,13 +74,28 @@ public class ThreadPoolManager extends Thread{
 	} 
 
 	public boolean addTask(SelectionKey key){
-			if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
-					addKey(key);
-					return true;
+		synchronized(this){
+		if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
+			addKey(key);
+				if (getPendingTasks().size() == batchSize){ //If the last entry now made the batchSize full wait before returning to the selector until the batch has finished emptying
+					try{
+						wait();
+					}
+					catch(InterruptedException e){}
 				}
-			else {
-				return false;
+				return true;
 			}
+			else {
+				if (getPendingTasks().size() == batchSize){
+					try{
+						wait();
+					}
+					catch (InterruptedException e){}
+				return false;
+				}
+			}
+		return false;
+		}
 	}
 
 	public boolean addKey(SelectionKey key){
@@ -170,6 +185,9 @@ public class ThreadPoolManager extends Thread{
 					}
 				}
 				batchTimer.setBatchReady(false);
+				synchronized (this){
+					this.notify();
+				}
 			}
 		}
 	}
