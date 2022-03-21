@@ -8,11 +8,14 @@ Trevor Isaacson
 
 ## Building and Running the program
 
-To build the project, run the following command in the terminal from this project's main directory (the directory containing this README): $ gradle build           
+To build the project, run the following command in the terminal from this project's main directory (the directory containing this README): 
+    $ gradle build           
 
-The client nodes can be started using java-cp ./build/libs/HW2-1.0.jar cs455.scaling.Client {server-hostname} {server-port} {message-rate (seconds)}
+The client nodes can be started using the following command in the terminal:
+    $ java-cp ./build/libs/HW2-1.0.jar cs455.scaling.Client {server-hostname} {server-port} {message-rate (seconds)}
 
-The server node can be started using java-cp ./build/libs/HW2-1.0.jar cs455.scaling.Server {server-port} {threadPool-size} {batch-size} {batch-time (seconds)}
+The server node can be started using the following command in the terminal:
+    $ java-cp ./build/libs/HW2-1.0.jar cs455.scaling.Server {server-port} {threadPool-size} {batch-size} {batch-time (seconds)}
 
 ## Class Descriptions
 
