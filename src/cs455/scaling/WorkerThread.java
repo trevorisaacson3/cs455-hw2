@@ -18,7 +18,6 @@ public class WorkerThread extends Thread{
     private static ThreadPoolManager tpm;
     private SelectionKey nextKey = null;
     public int workerID = -1;
-    protected Vector<String> allMessages = new Vector<String>();
 
     public WorkerThread(int workerID, ThreadPoolManager tpm){
         this.workerID = workerID;
