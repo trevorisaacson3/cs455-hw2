@@ -2,9 +2,9 @@
 
 # Team 4
 ## Team Members (3)
-Alec Moran <br>
-Griffin Zavadil <br> 
-Trevor Isaacson <br>
+Alec Moran 
+Griffin Zavadil 
+Trevor Isaacson 
 
 ## Building and Running the program
 
@@ -24,19 +24,19 @@ The server node can be started using the following command in the terminal:
 ```
 
 ## Files included in submission
-- build.gradle <br>
-- README.txt <br>
-- src/cs455/scaling/AutomaticExit.java <br>
-- src/cs455/scaling/BatchTimer.java <br>
-- src/cs455/scaling/Client.java <br>
-- src/cs455/scaling/ClientReceiverThread.java <br>
-- src/cs455/scaling/Constants.java <br>
-- src/cs455/scaling/HashMessage.java <br>
-- src/cs455/scaling/KeySelector.java <br>
-- src/cs455/scaling/PrintStatsThread.java <br>
-- src/cs455/scaling/Server.java <br>
-- src/cs455/scaling/ThreadPoolManager.java <br>
-- src/cs455/scaling/WorkerThread.java <br>
+- build.gradle
+- README.txt
+- src/cs455/scaling/AutomaticExit.java
+- src/cs455/scaling/BatchTimer.java
+- src/cs455/scaling/Client.java
+- src/cs455/scaling/ClientReceiverThread.java
+- src/cs455/scaling/Constants.java
+- src/cs455/scaling/HashMessage.java
+- src/cs455/scaling/KeySelector.java
+- src/cs455/scaling/PrintStatsThread.java
+- src/cs455/scaling/Server.java
+- src/cs455/scaling/ThreadPoolManager.java
+- src/cs455/scaling/WorkerThread.java
 
 
 ## Class Descriptions
