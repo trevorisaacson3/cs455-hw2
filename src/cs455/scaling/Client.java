@@ -1,5 +1,6 @@
 package cs455.scaling;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
@@ -11,6 +12,8 @@ import java.util.Iterator;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.time.Instant;
@@ -20,8 +23,8 @@ import java.math.BigInteger;
 
 public class Client {
 	
-	private int totalSentCount = 0;
-	private int totalReceivedCount= 0;
+	private AtomicInteger totalSentCount = new AtomicInteger(0);
+	private AtomicInteger totalReceivedCount= new AtomicInteger(0);
 
 	private static SocketChannel client;
 	private static ByteBuffer writeBuffer;
@@ -31,7 +34,7 @@ public class Client {
 	public int serverPort = -1;
 	int messageRate = -1;
 
-	public volatile LinkedList<String> unverifiedHashes = new LinkedList<String>();
+	public LinkedList<String> unverifiedHashes = new LinkedList<String>();
 	
 	public Client (){};
 	
@@ -42,17 +45,32 @@ public class Client {
 		this.serverHost = serverHost;
 		this.serverPort = serverPort;
 		this.messageRate = messageRate;
+		initialize();
+	}
 
-		try {
-			System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
-			client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));
-			writeBuffer = ByteBuffer.allocate(8*Constants.KB);
+
+	private void tryConnection(){
+		while (true){
+			try {
+				System.out.println("Trying to connect to " + serverHost + ":" + serverPort);
+				client = SocketChannel.open(new InetSocketAddress(serverHost, serverPort));	
+				writeBuffer = ByteBuffer.allocate(8*Constants.KB);
+				if (client.isConnected()){
+					return;
+				}
+			}		
+			catch (IOException e) {		
+				// e.printStackTrace();
+				System.err.println("Connection to server timed out, retrying...");
+			}
 		}
+	}
 
-		catch (IOException e) {
-			e.printStackTrace();
-		}
+	public void initialize(){
 
+		tryConnection();
+		System.out.println("Connected to the server.");
+				
 		PrintStatsThread pst = new PrintStatsThread(this);
 		pst.start();
 
@@ -80,40 +98,36 @@ public class Client {
 		}
 	}
 
-	public LinkedList<String> getUnverifiedHashes(){
-		synchronized(this){
+	public synchronized LinkedList<String> getUnverifiedHashes(){
 			return unverifiedHashes;
-		}
 	}
 
-	public void addToUnverifiedHashes(String newHash){
-		synchronized (this){
+	public synchronized void addToUnverifiedHashes(String newHash){
 			unverifiedHashes.add(newHash);
-		}
 	}
 
-	public synchronized void incrementTotalSent(){
-		totalSentCount++;
+	public void incrementTotalSent(){
+		totalSentCount.incrementAndGet();
 	}
 
-	public synchronized void incrementTotalReceived(){
-		totalReceivedCount++;
+	public void incrementTotalReceived(){
+		totalReceivedCount.incrementAndGet();
 	}
 
-	public synchronized int getTotalSent(){
-		return totalSentCount;
+	public int getTotalSent(){
+		return totalSentCount.get();
 	}
 
-	public synchronized void resetTotalSent(){
-		this.totalSentCount = 0;
+	public void resetTotalSent(){
+		totalSentCount.set(0);
 	}
 
-	public synchronized void resetTotalReceived(){
-		this.totalReceivedCount = 0;
+	public void resetTotalReceived(){
+		totalReceivedCount.set(0);
 	}
 
-	public synchronized int getTotalReceived(){
-		return totalReceivedCount;
+	public int getTotalReceived(){
+		return totalReceivedCount.get();
 	}
 
 	public static void main(String[] args) throws IOException {

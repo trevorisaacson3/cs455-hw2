@@ -39,8 +39,14 @@ public class ClientReceiverThread extends Thread{
             	clientChannel.read(readBuffer);
 				byte[] response = readBuffer.array();
 				String responseString = new String(response);
-				int messageLength = Integer.parseInt(responseString.substring(0,2));
-				String messageString = responseString.substring(2,2+messageLength); // Trim excess padded zeros off of string
+				int iteratorCount = 0;
+				int numMessagesInBuffer = (int) ((double) responseString.length() / 39.00);
+				// System.out.println("num messages in buffer is about: " + numMessagesInBuffer);
+				int messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
+				for (int i = 0; i < numMessagesInBuffer; i+=messageLength){
+
+				messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
+				String messageString = responseString.substring(iteratorCount+2,2+messageLength); // Trim excess padded zeros off of string
 				boolean verified = false;
                 LinkedList<String> unverifiedHashes = client.getUnverifiedHashes();
 
@@ -55,15 +61,15 @@ public class ClientReceiverThread extends Thread{
 					// System.out.println("\tReceived an unverified string!");
 					// System.out.println("\tUnverified string: " + messageString + " length: " + messageString.length());
 					// System.out.println("\tSize of list of hashes: " + client.getUnverifiedHashes().size());
-					for (String hashString: client.getUnverifiedHashes()){
-						String partOfNH = hashString.substring(0,10);
-						if (partOfRS == partOfNH){
+					// for (String hashString: client.getUnverifiedHashes()){
+						// String partOfNH = hashString.substring(0,10);
+						// if (partOfRS == partOfNH){
 							// System.out.println("Found a match, size in response: " + responseString.length() + ", size in hash list: "+ hashString.length());
-						}
-					}
+						// }
+					// }
 
 				}
-
+			}
 				readBuffer.clear();
             }
             catch (IOException e){

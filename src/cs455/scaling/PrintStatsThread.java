@@ -53,11 +53,11 @@ public class PrintStatsThread extends Thread{
         if (nodeType == type.CLIENT) {
             try {
                 while (true) {
+                    Thread.sleep(20000);
                     LocalDateTime currentTime = LocalDateTime.now();
                     System.out.println("[" + currentTime + "] Total Sent Count: " + client.getTotalSent() + ", Total Received Count: " + client.getTotalReceived());
                     client.resetTotalReceived();
                     client.resetTotalSent();
-                    Thread.sleep(20000);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -67,12 +67,13 @@ public class PrintStatsThread extends Thread{
         if (nodeType == type.TPM) {
             try {
                 while (true) {
+                    this.startTime = Instant.now();
+                    Thread.sleep(20000);
                     LocalDateTime currentTime = LocalDateTime.now();
                     Instant endTime = Instant.now();
                     long preciseDuration = (Duration.between(startTime, endTime).toMillis()) / 1000; // converting per millisecond unit rate to per second rate (1000ms = 1s) 
                     preciseDuration = preciseDuration == 0 ? 1 : preciseDuration; // Prevent divide by zero error if the program just started and the timer hasn't started yet
                     double averageSent = (double)(tpm.getTotalSent()) / (double) preciseDuration;
-                    // double averageSent = (double)tpm.getTotalSent();
                     long numNodesConnected = (long) tpm.getNumNodesConnected() == 0 ? 1 : (long) tpm.getNumNodesConnected(); // Prevent divide by zero error if the program just started and no nodes have connected yet
                     double meanPerClientTP = averageSent / (double) numNodesConnected;
                     throughPutAverages.add(meanPerClientTP);
@@ -83,8 +84,6 @@ public class PrintStatsThread extends Thread{
                     df.format(meanPerClientTP);
                     System.out.println("[" + currentTime + "] Server Throughput: " + averageSent + " messages/s, Active Client Connections: " + tpm.getNumNodesConnected() + ", Mean Per-client Throughput: " + meanPerClientTP + " messages/s, Std. Dev. Of Per-client Throughput: " + stdDev + " messages/s");
                     this.tpm.resetTotalSent();
-                    this.startTime = Instant.now();
-                    Thread.sleep(20000);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

@@ -9,18 +9,19 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPoolManager extends Thread{
 
-	private int totalMessagesSent = 0;
-	private int totalMessagesReceived = 0;
+	private AtomicInteger totalMessagesSent = new AtomicInteger(0);
+	private AtomicInteger totalMessagesReceived = new AtomicInteger(0);
 
 
 	// Number of threads to initialize and keep alive for the duration of the program
 	private final int numThreads;
 
 	// Number of threads to initialize and keep alive for the duration of the program
-	private int totalNumConnections;
+	private AtomicInteger totalNumConnections = new AtomicInteger(0);
 
 	// Port Number the Server is listening on
 	private final int portnum;
@@ -39,7 +40,6 @@ public class ThreadPoolManager extends Thread{
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
-
 
 	//Used for debugging purposes to keep track of the number of tasks generated variables (DELETE WHEN NO LONGER NEEDED)
 	int totalNumTasks = 0;
@@ -73,10 +73,29 @@ public class ThreadPoolManager extends Thread{
 		}
 	} 
 
-	public void addTask(SelectionKey key){
-			if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
-					addKey(key);
+	public boolean addTask(SelectionKey key){
+		synchronized(this){
+		if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
+			addKey(key);
+				if (getPendingTasks().size() == batchSize){ //If the last entry now made the batchSize full wait before returning to the selector until the batch has finished emptying
+					try{
+						wait();
+					}
+					catch(InterruptedException e){}
 				}
+				return true;
+			}
+			else {
+				if (getPendingTasks().size() == batchSize){
+					try{
+						wait();
+					}
+					catch (InterruptedException e){}
+				return false;
+				}
+			}
+		return false;
+		}
 	}
 
 	public boolean addKey(SelectionKey key){
@@ -85,36 +104,36 @@ public class ThreadPoolManager extends Thread{
 		}
 	}
 
-	public synchronized int getTotalSent(){
-		return totalMessagesSent;
+	public int getTotalSent(){
+		return totalMessagesSent.get();
 	}
 
-	public synchronized void resetTotalSent(){
-		this.totalMessagesSent= 0;
+	public void resetTotalSent(){
+		totalMessagesSent.set(0);
 	}
 	
-	public synchronized int getTotalMessagesReceived(){
-		return totalMessagesReceived;
+	public int getTotalMessagesReceived(){
+		return totalMessagesReceived.get();
 	}
 
-	public synchronized void decrementNodesConnected(){
-		--totalNumConnections;
+	public void decrementNodesConnected(){
+		totalNumConnections.decrementAndGet();
 	}	
 
-	public synchronized void incrementNodesConnected(){
-		++totalNumConnections;
+	public void incrementNodesConnected(){
+		totalNumConnections.incrementAndGet();
 	}
 
-	public synchronized int getNumNodesConnected(){
-		return totalNumConnections;
+	public int getNumNodesConnected(){
+		return totalNumConnections.get();
 	}
 
-	public synchronized void incrementTotalReceived(){
-		++totalMessagesReceived;
+	public void incrementTotalReceived(){
+		totalMessagesReceived.incrementAndGet();
 	}
 	
-	public synchronized void incrementTotalSent(){
-		++totalMessagesSent;
+	public void incrementTotalSent(){
+		totalMessagesSent.incrementAndGet();
 	}
 
 	public LinkedList<SelectionKey> getPendingTasks(){
@@ -129,25 +148,11 @@ public class ThreadPoolManager extends Thread{
 		}
 	}
 
-	private boolean pendingTasksContainsRegistry(){
-		synchronized (this){
-			if (pendingTasks.size() != 0){
-				for (SelectionKey sk: pendingTasks){
-					if (sk.isAcceptable()){
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-	}
-
 	public void checkForNewKeys(){
 		while (true){
 			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
-			boolean batchContainsRegistry = pendingTasksContainsRegistry();
-			if (batchLoad == batchSize || batchReady == true || pendingTasksContainsRegistry()){
+			if (batchLoad == batchSize || batchReady == true ){
 				while (getPendingTasks().size() != 0){ // Start assigning keys to threads until it's empty
 					synchronized(this){
 						LinkedList<SelectionKey> currentKeys = this.getPendingTasks();
@@ -165,6 +170,9 @@ public class ThreadPoolManager extends Thread{
 					}
 				}
 				batchTimer.setBatchReady(false);
+				synchronized (this){
+					this.notify();
+				}
 			}
 		}
 	}
