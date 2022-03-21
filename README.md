@@ -24,19 +24,19 @@ The server node can be started using the following command in the terminal:
 ```
 
 ## Files included in submission
-[x] build.gradle <br>
-[x] README.txt <br>
-[x] src/cs455/scaling/AutomaticExit.java <br>
-[x] src/cs455/scaling/BatchTimer.java <br>
-[x] src/cs455/scaling/Client.java <br>
-[x] src/cs455/scaling/ClientReceiverThread.java <br>
-[x] src/cs455/scaling/Constants.java <br>
-[x] src/cs455/scaling/HashMessage.java <br>
-[x] src/cs455/scaling/KeySelector.java <br>
-[x] src/cs455/scaling/PrintStatsThread.java <br>
-[x] src/cs455/scaling/Server.java <br>
-[x] src/cs455/scaling/ThreadPoolManager.java <br>
-[x] src/cs455/scaling/WorkerThread.java <br>
+- build.gradle <br>
+- README.txt <br>
+- src/cs455/scaling/AutomaticExit.java <br>
+- src/cs455/scaling/BatchTimer.java <br>
+- src/cs455/scaling/Client.java <br>
+- src/cs455/scaling/ClientReceiverThread.java <br>
+- src/cs455/scaling/Constants.java <br>
+- src/cs455/scaling/HashMessage.java <br>
+- src/cs455/scaling/KeySelector.java <br>
+- src/cs455/scaling/PrintStatsThread.java <br>
+- src/cs455/scaling/Server.java <br>
+- src/cs455/scaling/ThreadPoolManager.java <br>
+- src/cs455/scaling/WorkerThread.java <br>
 
 
 ## Class Descriptions
