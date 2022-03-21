@@ -148,26 +148,11 @@ public class ThreadPoolManager extends Thread{
 		}
 	}
 
-	private boolean pendingTasksContainsRegistry(){
-		return false;
-		// synchronized (this){
-		// 	if (pendingTasks.size() != 0){
-		// 		for (SelectionKey sk: pendingTasks){
-		// 			if (sk.isAcceptable()){
-		// 				return true;
-		// 			}
-		// 		}
-		// 	}
-		// 	return false;
-		// }
-	}
-
 	public void checkForNewKeys(){
 		while (true){
 			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
-			boolean batchContainsRegistry = pendingTasksContainsRegistry();
-			if (batchLoad == batchSize || batchReady == true || pendingTasksContainsRegistry()){
+			if (batchLoad == batchSize || batchReady == true ){
 				while (getPendingTasks().size() != 0){ // Start assigning keys to threads until it's empty
 					synchronized(this){
 						LinkedList<SelectionKey> currentKeys = this.getPendingTasks();
