@@ -51,18 +51,18 @@ public class ClientReceiverThread extends Thread{
 					unverifiedHashes.remove(messageString);
 					client.incrementTotalReceived();
 				}
-				else {
+				// else {
 					// System.out.println("\tReceived an unverified string!");
 					// System.out.println("\tUnverified string: " + messageString + " length: " + messageString.length());
 					// System.out.println("\tSize of list of hashes: " + client.getUnverifiedHashes().size());
-					for (String hashString: client.getUnverifiedHashes()){
-						String partOfNH = hashString.substring(0,10);
-						if (partOfRS == partOfNH){
+					// for (String hashString: client.getUnverifiedHashes()){
+						// String partOfNH = hashString.substring(0,10);
+						// if (partOfRS == partOfNH){
 							// System.out.println("Found a match, size in response: " + responseString.length() + ", size in hash list: "+ hashString.length());
-						}
-					}
+						// }
+					// }
 
-				}
+				// }
 
 				readBuffer.clear();
             }

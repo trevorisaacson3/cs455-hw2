@@ -9,6 +9,8 @@ import java.nio.channels.SocketChannel;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Vector;
+import java.util.Queue;
 
 public class WorkerThread extends Thread{
 
@@ -16,6 +18,7 @@ public class WorkerThread extends Thread{
     private static ThreadPoolManager tpm;
     private SelectionKey nextKey = null;
     public int workerID = -1;
+    protected Vector<String> allMessages = new Vector<String>();
 
     public WorkerThread(int workerID, ThreadPoolManager tpm){
         this.workerID = workerID;
@@ -86,7 +89,8 @@ public class WorkerThread extends Thread{
 		client.configureBlocking(false);
         Selector keySelector = key.selector();
 		client.register(keySelector, SelectionKey.OP_READ);
-        key.selector().wakeup();
+        client.finishConnect();
+        // key.selector().wakeup();
 		tpm.incrementNodesConnected();
         return true;
 	}
@@ -106,17 +110,18 @@ public class WorkerThread extends Thread{
 				    byte[] receivedByteArray = readBuffer.array();
 				    HashMessage receivedHashMessage = new HashMessage(receivedByteArray);
                     boolean allZeros = true;
-                    for (byte b : receivedByteArray){ //Check to make sure buffer is not just zeros
-                        if (b != 0){
-                            allZeros = false;
-                        }
-                    }
-                    if (allZeros){
-                        return; //Ignore hashing and responding to an empty byte stream
-                    }
+    				String hashedMessageString = receivedHashMessage.getHashedString();
+                    // for (byte b : receivedByteArray){ //Check to make sure buffer is not just zeros
+                    //     if (b != 0){
+                    //         allZeros = false;
+                    //     }
+                    // }
+
+                    // if (allZeros){
+                    //     return; //Ignore hashing and responding to an empty byte stream
+                    // }
 
                     tpm.incrementTotalReceived();
-    				String hashedMessageString = receivedHashMessage.getHashedString();
     				readBuffer.clear();
                     byte[] messageBytes = hashedMessageString.getBytes();
     				ByteBuffer writeBuffer = ByteBuffer.allocate(8 * Constants.KB);
