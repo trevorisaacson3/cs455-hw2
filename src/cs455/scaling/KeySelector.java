@@ -69,14 +69,14 @@ public class KeySelector extends Thread{
 						key.attach(this);
 						// Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						if (!tpm.addTask(key)){
-							break;
+							continue;
 						}
 					}
 
 					if (key.isReadable()) {
 						// Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						if (!tpm.addTask(key)){
-							break;
+							continue;
 						}
 					}
 
