@@ -1,10 +1,10 @@
 # cs455 - Distributed Systems - Homework 2
 
 # Team 4
-## Team Members
-Alec Moran
-Griffin Zavadil
-Trevor Isaacson
+## Team Members (3)
+Alec Moran,
+Griffin Zavadil, 
+Trevor Isaacson 
 
 ## Building and Running the program
 
