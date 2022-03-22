@@ -42,7 +42,13 @@ public class ClientReceiverThread extends Thread{
 				int iteratorCount = 0;
 				int numMessagesInBuffer = (int) ((double) responseString.length() / 39.00);
 				// System.out.println("num messages in buffer is about: " + numMessagesInBuffer);
-				int messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
+				int messageLength = -1;
+				try {
+					messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
+				}
+				catch (NumberFormatException e){
+					continue; // If it cannot read the first two numbers of the next part of the buffer, do not parse and verify the rest of hte buffer 
+				}
 				for (int i = 0; i < numMessagesInBuffer; i+=messageLength){
 
 				messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
