@@ -76,13 +76,17 @@ public class PrintStatsThread extends Thread{
                     double averageSent = (double)(tpm.getTotalSent()) / (double) preciseDuration;
                     long numNodesConnected = (long) tpm.getNumNodesConnected() == 0 ? 1 : (long) tpm.getNumNodesConnected(); // Prevent divide by zero error if the program just started and no nodes have connected yet
                     double meanPerClientTP = averageSent / (double) numNodesConnected;
-                    throughPutAverages.add(meanPerClientTP);
-                    Object[] tpaArray = throughPutAverages.toArray();
-                    double stdDev = getStandardDev(tpaArray);
-                    DecimalFormat df = new DecimalFormat ("#.000");
-                    df.format(stdDev);
-                    df.format(meanPerClientTP);
-                    System.out.println("[" + currentTime + "] Server Throughput: " + averageSent + " messages/s, Active Client Connections: " + tpm.getNumNodesConnected() + ", Mean Per-client Throughput: " + meanPerClientTP + " messages/s, Std. Dev. Of Per-client Throughput: " + stdDev + " messages/s");
+                    double stdDev = 0.0;
+                    if (tpm.getNumNodesConnected() != 0){
+                        throughPutAverages.add(meanPerClientTP);
+                        Object[] tpaArray = throughPutAverages.toArray();
+                        stdDev = getStandardDev(tpaArray);
+                    }
+                    DecimalFormat df = new DecimalFormat ("#.###");
+                    String stdDev_string, meanPerClientTP_string;
+                    stdDev_string = df.format(stdDev);
+                    meanPerClientTP_string = df.format(meanPerClientTP);
+                    System.out.println("[" + currentTime + "] Server Throughput: " + averageSent + " messages/s, Active Client Connections: " + tpm.getNumNodesConnected() + ", Mean Per-client Throughput: " + meanPerClientTP_string + " messages/s, Std. Dev. Of Per-client Throughput: " + stdDev_string + " messages/s");
                     this.tpm.resetTotalSent();
                 }
             } catch (Exception e) {

@@ -62,13 +62,23 @@ public class WorkerThread extends Thread{
                     if (registerSuccess) {
                         ks.incrementNumRegisteredKeys();
                     }
+                    return;
                 }
         
-                else if (nextKey.isReadable() | nextKey.isWritable()) {
+                else if (nextKey.interestOps() == SelectionKey.OP_WRITE){
+                    nextKey.interestOps(SelectionKey.OP_READ);
                     this.readAndRespond(nextKey, workerID);
+                    return;
                 } 
+                else { 
+                    nextKey.interestOps(SelectionKey.OP_READ);
+                    return;
+                }
             }
             else{
+                // TODO: REMOVE THIS COMMENTED OUT CODE
+                // boolean keyIsNull = nextKey == null;
+                // System.out.println("SYSTEM FAILURE, KEY IS NULL? " + keyIsNull);
                 return;
             }
         }
@@ -91,6 +101,7 @@ public class WorkerThread extends Thread{
         client.finishConnect();
         // key.selector().wakeup();
 		tpm.incrementNodesConnected();
+        // System.out.println("I have accepted: " + client.socket().getInetAddress());
         return true;
 	}
 
@@ -121,7 +132,7 @@ public class WorkerThread extends Thread{
                     // }
 
                     tpm.incrementTotalReceived();
-    				readBuffer.clear();
+    				// readBuffer.clear();
                     byte[] messageBytes = hashedMessageString.getBytes();
     				ByteBuffer writeBuffer = ByteBuffer.allocate(8 * Constants.KB);
                     String responseLength = messageBytes.length + "";
@@ -141,6 +152,7 @@ public class WorkerThread extends Thread{
 			        bytesRead = client.read(readBuffer);
     		    }
     		}
+            readBuffer.clear();
     }
 
 

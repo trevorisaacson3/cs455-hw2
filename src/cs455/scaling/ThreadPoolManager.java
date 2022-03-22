@@ -75,26 +75,29 @@ public class ThreadPoolManager extends Thread{
 
 	public boolean addTask(SelectionKey key){
 		synchronized(this){
-		if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
-			addKey(key);
-				if (getPendingTasks().size() == batchSize){ //If the last entry now made the batchSize full wait before returning to the selector until the batch has finished emptying
-					try{
-						wait();
-					}
-					catch(InterruptedException e){}
+			if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
+				if (key.interestOps() == SelectionKey.OP_READ){
+					key.interestOps(SelectionKey.OP_WRITE); //This prevents us from adding a key to the batch twice in a row before it's been processed by the workerThread and it's interestOps are changed back to OP_READ
 				}
-				return true;
-			}
-			else {
-				if (getPendingTasks().size() == batchSize){
-					try{
-						wait();
+				addKey(key);
+					if (getPendingTasks().size() == batchSize){ //If the last entry now made the batchSize full wait before returning to the selector until the batch has finished emptying
+						try{
+							wait();
+						}
+						catch(InterruptedException e){}
 					}
-					catch (InterruptedException e){}
-				return false;
+					return true;
 				}
-			}
-		return false;
+				else {
+					if (getPendingTasks().size() == batchSize){
+						try{
+							wait();
+						}
+						catch (InterruptedException e){}
+						return false;
+					}
+				}
+			return false;
 		}
 	}
 

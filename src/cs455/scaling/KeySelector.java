@@ -79,6 +79,9 @@ public class KeySelector extends Thread{
 							continue;
 						}
 					}
+					else if (key.isReadable() && key.interestOps() == SelectionKey.OP_WRITE){
+						System.out.println("WHAT ARE YE DOING HERE MATE");
+					}
 
 					// Remove from the set when done
 					iter.remove();
