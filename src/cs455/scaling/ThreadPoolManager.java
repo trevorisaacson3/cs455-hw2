@@ -39,7 +39,7 @@ public class ThreadPoolManager extends Thread{
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
-	private static LinkedBlockingQueue<SelectionKey> pendingTasks = new LinkedBlockingQueue<SelectionKey>(); // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+	private static LinkedBlockingQueue<Task> pendingTasks = new LinkedBlockingQueue<Task>(); // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
@@ -54,7 +54,7 @@ public class ThreadPoolManager extends Thread{
 		this.portnum = portnum;
 		this.batchSize = batchSize;
 		this.batchTime = batchTime;
-		pendingTasks = new LinkedBlockingQueue<SelectionKey>(batchSize);
+		pendingTasks = new LinkedBlockingQueue<Task>(batchSize);
 
 		batchTimer = new BatchTimer(batchTime);
 		batchTimer.start();
@@ -73,31 +73,27 @@ public class ThreadPoolManager extends Thread{
 		ks.start();
 	}
 
-	public LinkedBlockingQueue<SelectionKey> getTaskList(){
+	public LinkedBlockingQueue<Task> getTaskList(){
 		synchronized (this){
 			return pendingTasks;
 		}
 	} 
 
-	public boolean addTask(SelectionKey key){
-		synchronized(this){
-			if (getPendingTasks().contains(key)){
-				return false;
-			}
-		}
+	public boolean addTask(SelectionKey key, Tasktype tType){
 		if (key.interestOps() == SelectionKey.OP_READ){
 			key.interestOps(SelectionKey.OP_WRITE); //This prevents us from adding a key to the batch twice in a row before it's been processed by the workerThread and it's interestOps are changed back to OP_READ
 		}
-		addKey(key);
-		return true;
-	}
-
-	public boolean addKey(SelectionKey key){
-			boolean addSuccessful = false;
-			while (addSuccessful == false){
-				addSuccessful = pendingTasks.offer(key);
+		Task nextTask = new Task(tType, key, this);
+		synchronized(this){
+			if (getPendingTasks().contains(nextTask)){
+				return false;
 			}
-			return true;
+		}
+		boolean addSuccessful = false;
+		while (addSuccessful == false){
+			addSuccessful = pendingTasks.offer(nextTask);
+		}
+		return true;
 	}
 
 	public int getTotalSent(){
@@ -148,13 +144,13 @@ public class ThreadPoolManager extends Thread{
 		totalMessagesSent.incrementAndGet();
 	}
 
-	public LinkedBlockingQueue<SelectionKey> getPendingTasks(){
+	public LinkedBlockingQueue<Task> getPendingTasks(){
 		synchronized (this){
 			return pendingTasks;
 		}
 	}
 
-	public SelectionKey getNextTask(){
+	public Task getNextTask(){
 		synchronized(this){
 			return pendingTasks.poll();
 		}
@@ -165,11 +161,11 @@ public class ThreadPoolManager extends Thread{
 			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
 			if ((batchLoad == batchSize || batchReady == true ) && batchLoad != 0){
-				SelectionKey key = getNextTask();
+				Task nextTask = getNextTask();
 				WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
 				if (nextWorker != null){
 					++totalNumTasks;
-					nextWorker.setNextKey(key);
+					nextWorker.setNextTask(nextTask);
 					nextWorker.notifyWorker();
 				}
 				batchTimer.setBatchReady(false);

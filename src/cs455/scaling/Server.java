@@ -29,9 +29,6 @@ public class Server {
 			System.out.println("Starting server w/ portnum: " + portnum + ", threadPoolSize: " + threadPoolSize + ", batchSize: " + batchSize + ", batchTime: " + batchTime + " seconds.");
 			ThreadPoolManager tpm = new ThreadPoolManager(portnum, threadPoolSize, batchSize, batchTime);
 			tpm.checkForNewKeys();
-
-
-
 		}
 
 		else{
