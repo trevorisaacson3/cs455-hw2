@@ -13,6 +13,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Collections;
 import java.util.Set;
+
+import cs455.scaling.Tasktype;
+
 import java.time.LocalDateTime;
 
 
@@ -44,14 +47,11 @@ public class KeySelector extends Thread{
 
 	private synchronized void readKeys(){
 		try {
-
 			selector = Selector.open();
 			serverSocketChannel = ServerSocketChannel.open();
 			serverSocketChannel.bind(new InetSocketAddress(portnum));
 			serverSocketChannel.configureBlocking(false);
-
 			serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-
 			HashSet<SelectionKey> registeredKeys = new HashSet<SelectionKey>();
 			while (true) {
 				selector.select();
@@ -68,14 +68,14 @@ public class KeySelector extends Thread{
 					if (key.isAcceptable()) {
 						key.attach(this);
 						// Add register task to pendingTasks in threadPoolManager so that the threadPools can handle those
-						if (!tpm.addTask(key)){
+						if (!tpm.addTask(key, Tasktype.REGISTER)){
 							continue;
 						}
 					}
-
+					
 					if (key.isReadable()) {
 						// Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
-						if (!tpm.addTask(key)){
+						if (!tpm.addTask(key, Tasktype.READ_AND_RESPOND)){
 							continue;
 						}
 					}

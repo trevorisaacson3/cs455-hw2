@@ -45,7 +45,7 @@ The server node can be started using the following command in the terminal:
 This class is used to automatically shut down the application, either the client or the server node, after a specified amount of time to prevent unhandled program instances from running forever on state capital machines. For debugging purposes this was set to reasonably short periods of time but for the final submission of this assignment the maximum run-time period for the program has been extended to 9999 minutes which is around 6.93 days.
 
 ### BatchTimer.java
-This class is used to keep track of the batchTime and to periodically release the current batch if the time since it has last released has expired (using the batch-time specified in the program arguments).
+This class is used to keep track of the batch-time and to periodically release the next work unit if the time since it has last released has expired (using the batch-time specified in the program arguments).
 
 ### Client.java
 This class is the primary class for client nodes and contains the necessary main method needed to initialize a client node in it's entirety. It is responsible for creating other necessary objects and it is also responsible for regularly sending messages to the server.
