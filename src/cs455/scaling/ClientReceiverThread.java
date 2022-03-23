@@ -41,7 +41,6 @@ public class ClientReceiverThread extends Thread{
 				String responseString = new String(response);
 				int iteratorCount = 0;
 				int numMessagesInBuffer = (int) ((double) responseString.length() / 39.00);
-				// System.out.println("num messages in buffer is about: " + numMessagesInBuffer);
 				int messageLength = -1;
 				try {
 					messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
@@ -52,7 +51,7 @@ public class ClientReceiverThread extends Thread{
 				for (int i = 0; i < numMessagesInBuffer; i+=messageLength){
 
 				messageLength = Integer.parseInt(responseString.substring(iteratorCount,2));
-				String messageString = responseString.substring(iteratorCount+2,2+messageLength); // Trim excess padded zeros off of string
+				String messageString = responseString.substring(iteratorCount+2,2+messageLength); 
 				boolean verified = false;
                 LinkedList<String> unverifiedHashes = client.getUnverifiedHashes();
 

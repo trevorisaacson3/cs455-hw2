@@ -44,14 +44,11 @@ public class KeySelector extends Thread{
 
 	private synchronized void readKeys(){
 		try {
-
 			selector = Selector.open();
 			serverSocketChannel = ServerSocketChannel.open();
 			serverSocketChannel.bind(new InetSocketAddress(portnum));
 			serverSocketChannel.configureBlocking(false);
-
 			serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
-
 			HashSet<SelectionKey> registeredKeys = new HashSet<SelectionKey>();
 			while (true) {
 				selector.select();
@@ -72,15 +69,12 @@ public class KeySelector extends Thread{
 							continue;
 						}
 					}
-
+					
 					if (key.isReadable()) {
 						// Add read-write task to pendingTasks in threadPoolManager so that the threadPools can handle those
 						if (!tpm.addTask(key)){
 							continue;
 						}
-					}
-					else if (key.isReadable() && key.interestOps() == SelectionKey.OP_WRITE){
-						System.out.println("WHAT ARE YE DOING HERE MATE");
 					}
 
 					// Remove from the set when done

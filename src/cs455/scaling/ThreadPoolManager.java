@@ -9,6 +9,9 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.Collection;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ThreadPoolManager extends Thread{
@@ -36,7 +39,7 @@ public class ThreadPoolManager extends Thread{
 	private HashSet<WorkerThread> allWorkerThreads = new HashSet<>();
 
 	// Data structure for queue of pending tasks
-	private static LinkedList<SelectionKey> pendingTasks = new LinkedList<SelectionKey>(); // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
+	private static LinkedBlockingQueue<SelectionKey> pendingTasks = new LinkedBlockingQueue<SelectionKey>(); // This is one of the 7 different types of implementations of the BlockingQueue interface, (this is likely? the one we want)
 
 	// Class for managing time between last batch was dispersed to workerThreads
 	private BatchTimer batchTimer;
@@ -44,11 +47,14 @@ public class ThreadPoolManager extends Thread{
 	//Used for debugging purposes to keep track of the number of tasks generated variables (DELETE WHEN NO LONGER NEEDED)
 	int totalNumTasks = 0;
 
+	private static HashMap<SelectionKey,Integer> recentThroughPuts = new HashMap<>(150);
+
 	public ThreadPoolManager(int portnum, int numThreads, int batchSize, int batchTime){
 		this.numThreads = numThreads;
 		this.portnum = portnum;
 		this.batchSize = batchSize;
 		this.batchTime = batchTime;
+		pendingTasks = new LinkedBlockingQueue<SelectionKey>(batchSize);
 
 		batchTimer = new BatchTimer(batchTime);
 		batchTimer.start();
@@ -67,7 +73,7 @@ public class ThreadPoolManager extends Thread{
 		ks.start();
 	}
 
-	public LinkedList<SelectionKey> getTaskList(){
+	public LinkedBlockingQueue<SelectionKey> getTaskList(){
 		synchronized (this){
 			return pendingTasks;
 		}
@@ -75,36 +81,23 @@ public class ThreadPoolManager extends Thread{
 
 	public boolean addTask(SelectionKey key){
 		synchronized(this){
-			if (!getPendingTasks().contains(key) && getPendingTasks().size() < batchSize){
-				if (key.interestOps() == SelectionKey.OP_READ){
-					key.interestOps(SelectionKey.OP_WRITE); //This prevents us from adding a key to the batch twice in a row before it's been processed by the workerThread and it's interestOps are changed back to OP_READ
-				}
-				addKey(key);
-					if (getPendingTasks().size() == batchSize){ //If the last entry now made the batchSize full wait before returning to the selector until the batch has finished emptying
-						try{
-							wait();
-						}
-						catch(InterruptedException e){}
-					}
-					return true;
-				}
-				else {
-					if (getPendingTasks().size() == batchSize){
-						try{
-							wait();
-						}
-						catch (InterruptedException e){}
-						return false;
-					}
-				}
-			return false;
+			if (getPendingTasks().contains(key)){
+				return false;
+			}
 		}
+		if (key.interestOps() == SelectionKey.OP_READ){
+			key.interestOps(SelectionKey.OP_WRITE); //This prevents us from adding a key to the batch twice in a row before it's been processed by the workerThread and it's interestOps are changed back to OP_READ
+		}
+		addKey(key);
+		return true;
 	}
 
 	public boolean addKey(SelectionKey key){
-		synchronized (this) {
-			return pendingTasks.add(key);
-		}
+			boolean addSuccessful = false;
+			while (addSuccessful == false){
+				addSuccessful = pendingTasks.offer(key);
+			}
+			return true;
 	}
 
 	public int getTotalSent(){
@@ -135,19 +128,35 @@ public class ThreadPoolManager extends Thread{
 		totalMessagesReceived.incrementAndGet();
 	}
 	
-	public void incrementTotalSent(){
+	public synchronized Object[] getRecentThroughputs(){
+		Collection <Integer> currentThroughputs = this.recentThroughPuts.values();
+		return currentThroughputs.toArray();
+	}
+
+	public synchronized void clearRecentThroughputs(){
+		recentThroughPuts.clear();
+	}
+
+	public synchronized void incrementTotalSent(SelectionKey key){
+		int currentReceived = 0;
+		try{
+			currentReceived = recentThroughPuts.get(key);
+		}
+		catch (NullPointerException e){
+		}
+		recentThroughPuts.put(key, currentReceived + 1);
 		totalMessagesSent.incrementAndGet();
 	}
 
-	public LinkedList<SelectionKey> getPendingTasks(){
+	public LinkedBlockingQueue<SelectionKey> getPendingTasks(){
 		synchronized (this){
 			return pendingTasks;
 		}
 	}
 
-	public void clearPendingTasks(){
+	public SelectionKey getNextTask(){
 		synchronized(this){
-			pendingTasks.clear();
+			return pendingTasks.poll();
 		}
 	}
 
@@ -155,27 +164,15 @@ public class ThreadPoolManager extends Thread{
 		while (true){
 			int batchLoad = getPendingTasks().size();
 			boolean batchReady = batchTimer.getBatchReadyStatus();
-			if (batchLoad == batchSize || batchReady == true ){
-				while (getPendingTasks().size() != 0){ // Start assigning keys to threads until it's empty
-					synchronized(this){
-						LinkedList<SelectionKey> currentKeys = this.getPendingTasks();
-						Iterator<SelectionKey> keyIterator = currentKeys.iterator();
-						while (keyIterator.hasNext()){
-							SelectionKey key = keyIterator.next();
-							WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
-							if (nextWorker != null){
-								++totalNumTasks;
-								nextWorker.setNextKey(key);
-								nextWorker.notifyWorker();
-							}
-						}
-						clearPendingTasks();
-					}
+			if ((batchLoad == batchSize || batchReady == true ) && batchLoad != 0){
+				SelectionKey key = getNextTask();
+				WorkerThread nextWorker = getNextAvailableWorker(); // Get the next available worker, this is a blocking call that waits until one is available
+				if (nextWorker != null){
+					++totalNumTasks;
+					nextWorker.setNextKey(key);
+					nextWorker.notifyWorker();
 				}
 				batchTimer.setBatchReady(false);
-				synchronized (this){
-					this.notify();
-				}
 			}
 		}
 	}

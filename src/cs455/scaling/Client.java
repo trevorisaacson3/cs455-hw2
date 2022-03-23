@@ -60,7 +60,6 @@ public class Client {
 				}
 			}		
 			catch (IOException e) {		
-				// e.printStackTrace();
 				System.err.println("Connection to server timed out, retrying...");
 			}
 		}
@@ -86,7 +85,7 @@ public class Client {
 			writeBuffer = ByteBuffer.wrap(unhashedMessageBytes);
 			try{
 				addToUnverifiedHashes(hashedMessageString);
-				client.write(writeBuffer);
+				int writeStatus = client.write(writeBuffer);
 				incrementTotalSent();
 				writeBuffer.clear();
 				Thread.sleep(1000 / messageRate);
